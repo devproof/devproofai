@@ -1,0 +1,93 @@
+# Test suite (spec 2026-07-18): unit/integration tests, chart lint, client
+# build. Images are NOT built here — releases are manual via release.yml.
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: operator } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: operator/go.mod }
+      - run: go vet ./...
+      - run: go test ./...
+
+  control-plane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_OPTIONS: "--disable-warning=DEP0040 --disable-warning=DEP0169"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: devproof
+          POSTGRES_PASSWORD: devproof-dev
+          POSTGRES_DB: devproof
+        # Same port as the dev cluster's localhost-lb, so db.ts's default
+        # connection string works unchanged.
+        ports: ["15432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U devproof"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults: { run: { working-directory: control-plane } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: control-plane/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  session-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: session-runner } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: grep -E "^(httpx|anyio|h11|httpcore|idna|certifi)==" requirements.txt > /tmp/test-reqs.txt && pip install -r /tmp/test-reqs.txt
+      - run: python -m unittest discover -s tests -p "test_*.py"
+
+  client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults: { run: { working-directory: python-client } }
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }   # setuptools-scm needs tags
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v7
+        with: { name: devproofai-client-dist, path: python-client/dist/ }
+
+  chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v4
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      # dependency build resolves Chart.lock but still needs the repo definition
+      # (fresh runners have no helm repos; fails with "no repository definition").
+      - run: helm repo add llmkube https://defilantech.github.io/LLMKube
+      - run: helm dependency build helm-charts
+      - run: helm lint helm-charts --skip-schema-validation
+      - run: node --test helm-charts/tests/render.test.mjs

@@ -1,0 +1,36 @@
+{{- if and .Values.operator.enabled .Values.llmkube.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: devproof-operator
+rules:
+  - apiGroups: [serving.devproof.ai]
+    resources: [modelpools, modeldeployments]
+    verbs: [get, list, watch, update, patch]
+  - apiGroups: [serving.devproof.ai]
+    resources: [modelpools/status, modeldeployments/status]
+    verbs: [get, update, patch]
+  - apiGroups: [inference.llmkube.dev]
+    resources: [inferenceservices, models]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [persistentvolumeclaims]
+    verbs: [get, list, watch, delete]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/proxy]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: devproof-operator
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: devproof-operator }
+subjects:
+  - { kind: ServiceAccount, name: devproof-operator, namespace: {{ .Release.Namespace }} }
+{{- end }}

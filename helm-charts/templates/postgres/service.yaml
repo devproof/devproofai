@@ -1,0 +1,10 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: {{ include "devproof.app" "postgres" }}
+  ports: [{ port: 5432 }]
+{{- end }}

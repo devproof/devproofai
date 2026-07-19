@@ -1,0 +1,91 @@
+{{- if .Values.controlplane.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controlplane
+  {{- with .Values.controlplane.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.controlplane.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.controlplane.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "devproof.app" "controlplane" }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "devproof.app" "controlplane" }}
+        {{- with .Values.controlplane.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.controlplane.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: devproof-controlplane
+      {{- include "devproof.podScheduling" .Values.controlplane | nindent 6 }}
+      {{- include "devproof.pullSecrets" $ | nindent 6 }}
+      containers:
+        - name: controlplane
+          image: {{ include "devproof.image" .Values.controlplane.image }}
+          imagePullPolicy: {{ .Values.controlplane.image.pullPolicy }}
+          env:
+            - { name: HOST, value: "0.0.0.0" }
+            - name: DEVPROOF_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: devproof-db, key: database-url }
+            {{- if .Values.minio.enabled }}
+            - { name: DEVPROOF_S3_ENDPOINT, value: http://minio.{{ .Release.Namespace }}.svc.cluster.local:9000 }
+            - { name: DEVPROOF_S3_BUCKET, value: devproof-files }
+            - name: DEVPROOF_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.minio.auth.existingSecret | default "devproof-minio" }}, key: MINIO_ROOT_USER }
+            - name: DEVPROOF_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.minio.auth.existingSecret | default "devproof-minio" }}, key: MINIO_ROOT_PASSWORD }
+            {{- else }}
+            {{- with .Values.s3.endpoint }}
+            - { name: DEVPROOF_S3_ENDPOINT, value: {{ . | quote }} }
+            {{- end }}
+            - { name: DEVPROOF_S3_BUCKET, value: {{ .Values.s3.bucket | quote }} }
+            {{- with .Values.s3.region }}
+            - { name: DEVPROOF_S3_REGION, value: {{ . | quote }} }
+            {{- end }}
+            {{- if eq .Values.s3.auth.mode "key" }}
+            - name: DEVPROOF_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.s3.auth.existingSecret }}, key: access-key-id }
+            - name: DEVPROOF_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.s3.auth.existingSecret }}, key: secret-access-key }
+            {{- end }}
+            {{- end }}
+            - { name: DEVPROOF_RUNNER_IMAGE, value: {{ include "devproof.image" .Values.agents.runnerImage | quote }} }
+            - { name: DEVPROOF_EGRESS_PROXY_IMAGE, value: {{ include "devproof.image" .Values.agents.egressProxy.image | quote }} }
+            - { name: DEVPROOF_EGRESS_PROXY_POD, value: {{ dict "resources" .Values.agents.egressProxy.resources "nodeSelector" .Values.agents.egressProxy.nodeSelector "tolerations" .Values.agents.egressProxy.tolerations | toJson | quote }} }
+            {{- with (include "devproof.pullSecretName" $) }}
+            - { name: DEVPROOF_IMAGE_PULL_SECRET, value: {{ . | quote }} }
+            {{- end }}
+            - { name: DEVPROOF_GATEWAY_INTERNAL, value: http://gateway.{{ include "devproof.gatewayNamespace" $ }}.svc.cluster.local:{{ .Values.gateway.service.port }} }
+            - { name: DEVPROOF_GATEWAY_LOCAL_URL, value: http://gateway.{{ include "devproof.gatewayNamespace" $ }}.svc.cluster.local:{{ .Values.gateway.service.port }} }
+            - { name: DEVPROOF_CALLBACK_URL, value: http://controlplane.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controlplane.service.port }} }
+            - { name: DEVPROOF_AGENTS_NAMESPACE, value: {{ .Values.agents.namespace | quote }} }
+            - { name: DEVPROOF_GATEWAY_NAMESPACE, value: {{ include "devproof.gatewayNamespace" $ | quote }} }
+            - { name: DEVPROOF_SERVING_NAMESPACE, value: {{ include "devproof.servingNamespace" $ | quote }} }
+            - { name: DEVPROOF_LOCAL_SERVING, value: {{ .Values.llmkube.enabled | quote }} }
+            - { name: DEVPROOF_CATALOG, value: /app/catalog/models.yaml }
+            - { name: DEVPROOF_MCP_REGISTRY, value: /app/catalog/mcp-servers.yaml }
+          ports: [{ containerPort: 7080 }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 7080 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.controlplane.resources | nindent 12 }}
+{{- end }}

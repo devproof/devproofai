@@ -1,0 +1,63 @@
+{{- if .Values.postgres.enabled }}
+{{- $secret := .Values.postgres.auth.existingSecret | default "devproof-pg" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  {{- with .Values.postgres.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.postgres.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      app: {{ include "devproof.app" "postgres" }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "devproof.app" "postgres" }}
+        {{- with .Values.postgres.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.postgres.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "devproof.podScheduling" .Values.postgres | nindent 6 }}
+      {{- include "devproof.pullSecrets" $ | nindent 6 }}
+      containers:
+        - name: postgres
+          image: {{ include "devproof.image" .Values.postgres.image }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: admin-password }
+            - name: DEVPROOF_APP_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ $secret }}, key: app-password }
+          ports: [{ containerPort: 5432 }]
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data, subPath: pgdata }
+            - { name: initdb, mountPath: /docker-entrypoint-initdb.d }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: devproof-pg-data }
+        - name: initdb
+          configMap: { name: devproof-pg-initdb }
+{{- end }}

@@ -1,0 +1,14 @@
+apiVersion: v2
+# Chart name = the OCI repo on GHCR (helm push derives it): devproofai-helm,
+# per the account-wide devproofai-* naming convention. Templates hardcode
+# resource names (no .Chart.Name), so the rename doesn't touch deployed objects.
+name: devproofai-helm
+description: Devproof AI — self-hosted LLM serving + managed-agents platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: llmkube
+    version: 0.9.7
+    repository: https://defilantech.github.io/LLMKube
+    condition: llmkube.enabled

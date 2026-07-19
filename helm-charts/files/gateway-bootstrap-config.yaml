@@ -1,0 +1,15 @@
+model_list:
+  - model_name: qwen05b-dp
+    litellm_params:
+      model: openai/qwen05b-dp
+      api_base: http://qwen05b-dp.devproof-serving.svc.cluster.local:8080/v1
+      api_key: none
+    model_info:
+      devproof_sanitize: true
+litellm_settings:
+  drop_params: true
+  # Keep /v1/messages on the chat/completions bridge (see buildGatewayConfig).
+  use_chat_completions_url_for_anthropic_messages: true
+  callbacks: custom_callbacks.proxy_handler_instance
+general_settings:
+  custom_auth: custom_callbacks.user_custom_auth

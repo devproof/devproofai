@@ -1,0 +1,745 @@
+/* ════════════════════════════════════════════════════════════════
+   Devproof.AI — Control Plane
+   Identity: engineering blueprint. Clean white panels float above a
+   faint graph-paper grid; IBM Plex superfamily; blueprint blue signal
+   + orange action accent. Unified with the pitch-deck brand.
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  /* Theme: `color-scheme` picks which half of every light-dark() resolves.
+     Default `light dark` = follow the OS (the System setting). The
+     [data-theme] rules below force a side; layout.tsx stamps the attribute
+     from app_settings. Setting color-scheme also makes native scrollbars,
+     dropdowns and form controls follow the theme — they didn't before.
+     ONE source of truth per token: no @media (prefers-color-scheme) block. */
+  color-scheme: light dark;
+  --paper: light-dark(#eaeef3, #0b1a2c);
+  --panel: light-dark(#ffffff, #10243d);
+  --ink:   light-dark(#0f2038, #dbe6f3);
+  --muted: light-dark(#5c6b7d, #8ba1ba);
+  /* Labels (table heads, card/section eyebrows) sit at small uppercase sizes
+     where --muted's thin stems wash out (4.85:1 on --thead). --label is the
+     same hue at ~7.8:1 light / ~7.95:1 dark — --muted stays the prose grey. */
+  --label: light-dark(#3d4c5e, #b6c9de);
+  --line:  light-dark(#d6dde7, #24405f);
+  --edge:  light-dark(#b9c4d2, #33547a);
+  --thead: light-dark(#eef2f7, #14304d);
+  --blue:   light-dark(#1e5bc6, #6ba6ff);
+  --accent: light-dark(#e8641b, #f2823c);
+  --hover:  light-dark(#eef3f9, #17324f);
+  --grid:   light-dark(rgba(30, 91, 198, .045), rgba(107, 166, 255, .06));
+  --good: light-dark(#167c4a, #46c07d);
+  --bad:  light-dark(#c0303a, #ec6a72);
+  --mcp:  light-dark(#7b5bd6, #a98cf0);
+  --skill: light-dark(#1e7d4f, #4fc088);
+  --subagent: light-dark(#0f766e, #2dd4bf);
+  /* Chart series pair (validated: lightness band, chroma, CVD ΔE 60+, ≥3:1
+     on --panel). Cool blueprint pair — the orange accent stays out of data. */
+  --chart1: light-dark(#1e5bc6, #4c8dff);
+  --chart2: light-dark(#0d9488, #10a394);
+  /* Roles: --font-cond = DISPLAY ONLY (>=18px: h1, .card .big, modal/sheet
+     titles). Below that its counters fill in and M/S rasterize dirty — small
+     uppercase labels use --font-sans 600 + --label. --font-mono = machine data
+     (ids, code, chips, axes); its fixed advances look ragged as label text. */
+  --font-sans: var(--f-sans, system-ui), -apple-system, "Segoe UI", sans-serif;
+  --font-cond: var(--f-cond, var(--f-sans, system-ui)), sans-serif;
+  --font-mono: var(--f-mono, ui-monospace, "Cascadia Mono", Consolas), monospace;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+* { box-sizing: border-box; }
+html { font-family: var(--font-sans); }
+body {
+  margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5;
+  background-color: var(--paper);
+  /* Signature: blueprint graph paper. */
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── Shell: engineering drawing margin + content ────────────────── */
+.shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+.sidebar {
+  border-right: 1px solid var(--edge); background: var(--panel);
+  padding: 0 0 20px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar .brand {
+  display: flex; align-items: center; gap: 11px; padding: 16px 16px 8px;
+}
+.sidebar .brand-mark { width: 40px; height: 40px; flex-shrink: 0; }
+.sidebar .brand-text {
+  font-family: var(--font-cond); font-weight: 700; font-size: 20px; letter-spacing: .04em;
+  color: var(--ink); line-height: 1;
+}
+.sidebar .brand-text .ai { color: var(--accent); }
+.sidebar .brand-text .cp {
+  display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 10px;
+  font-weight: 600; letter-spacing: .05em; color: var(--accent); white-space: nowrap;
+}
+.sidebar .brand:hover .brand-text { color: var(--blue); }
+.sidebar .ws {
+  margin: 16px 12px 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); display: flex; flex-direction: column; gap: 5px;
+}
+.sidebar .ws label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink);
+  font-family: var(--font-sans); font-weight: 700; }
+.sidebar .group { padding: 18px 18px 6px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--label); font-family: var(--font-sans); font-weight: 600; }
+.sidebar .group::before { content: "// "; color: var(--edge); }
+.sidebar button.group-toggle { display: flex; width: 100%; align-items: center;
+  background: none; border: 0; cursor: pointer; text-align: left; }
+.sidebar .group-chevron { margin-left: auto; color: var(--muted); font-size: 17px;
+  transition: transform .15s ease; }
+.sidebar .group-chevron.open { transform: rotate(90deg); }
+.sidebar a.item { display: flex; align-items: center; gap: 10px; padding: 6px 18px; font-size: 13.5px;
+  border-left: 2px solid transparent; color: var(--muted); font-weight: 500; }
+.sidebar a.item svg { color: var(--muted); opacity: .85; }
+.sidebar a.item:hover { background: var(--hover); color: var(--ink); }
+.sidebar a.item:hover svg { color: var(--ink); }
+.sidebar a.item.active { border-left-color: var(--accent); background: var(--hover); font-weight: 600; color: var(--ink); }
+.sidebar a.item.active svg { color: var(--accent); opacity: 1; }
+.sidebar .nav-version { padding: 18px 16px 0; font-size: 11px; color: var(--muted); letter-spacing: .03em; }
+
+main { padding: 28px 36px; max-width: 1180px; min-width: 0; }
+/* All-mono on purpose — the terminal/blueprint breadcrumb. Weight 500, not 400:
+   at 12px/400 only ~56% of the glyph pixels land solid (the rest smear to
+   mid-tones and read unclean); 500 lifts that to ~63% without touching size,
+   colour or family. Measured, don't revert to 400. (500 is safe here: the
+   14px/500 doubled-bar trap noted on `td code` does not occur at 12px.) */
+.crumbs { font-size: 12px; color: var(--muted); margin-bottom: 12px;
+  font-family: var(--font-mono); font-weight: 500; }
+.crumbs a:hover { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+.pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 6px; }
+h1 { font-family: var(--font-cond); font-size: 30px; font-weight: 600; letter-spacing: .01em;
+  text-transform: uppercase; margin: 0; line-height: .98; }
+.sub { color: var(--muted); font-size: 13.5px; margin: 6px 0 22px; max-width: 74ch; }
+.sub code, code { font-family: var(--font-mono); font-size: 12px; }
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 14.5px; background: var(--panel);
+  border: 1px solid var(--edge); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 0 rgba(15,32,56,.03), 0 6px 18px -12px rgba(15,32,56,.18); }
+th, td { border-bottom: 1px solid var(--line); padding: 13px 16px; text-align: left; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+thead th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--label);
+  font-family: var(--font-sans); font-weight: 600; background: var(--thead); border-bottom: 1px solid var(--edge); }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: var(--hover); }
+td { font-variant-numeric: tabular-nums; }
+/* Ids/keys are machine data: ONE mono rule for every table cell, so a column
+   never depends on how its cell wraps the id (bare code, code-in-Link,
+   code-in-namebtn).
+   Two rasterization traps here, both verified pixel-by-pixel at 1x — mind them
+   before retuning:
+   1. Size must stay an INTEGER. Mono's flat bars (5, 7, 2, z) land between
+      pixel rows at a fractional size and smear across both; 13.5px read dirty.
+   2. Weight must stay 400 AT THIS SIZE. 14px + 500 rounds the horizontal bar
+      up to 2px while the vertical stems stay 1px, so 5/7 grow a top bar of
+      double thickness. (13px/15px/16px + 500 do NOT — it's 14px-specific.) */
+td code { font-size: 14px; font-weight: 400; }
+.tablewrap { overflow-x: auto; border-radius: 10px; }
+.tgroup td { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--ink); background: color-mix(in srgb, var(--blue) 14%, var(--panel));
+  box-shadow: inset 3px 0 0 var(--blue);
+  border-bottom: 1px solid var(--line); padding-top: 8px; padding-bottom: 8px; }
+.tgroup td .muted { font-weight: 400; text-transform: none; }
+tbody tr.tgroup:hover { background: color-mix(in srgb, var(--blue) 14%, var(--panel)); }
+
+td a { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+td a:hover { text-decoration-thickness: 2px; }
+td a code { color: inherit; }
+
+/* ── Controls ───────────────────────────────────────────────────── */
+/* Solid buttons invert the page: the fill is a semantic token, so the label
+   must be --panel (the paper colour), NOT a hardcoded #fff. Every semantic
+   token LIGHTENS in dark mode while #fff cannot follow — --ink + #fff gave
+   1.26:1 in dark. --panel is #ffffff in light, so light mode is unchanged. */
+button, .btn {
+  background: var(--ink); color: var(--panel); border: 0; padding: 8px 16px; cursor: pointer;
+  font-size: 13px; border-radius: 6px; font-weight: 600; font-family: inherit;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btn { display: inline-flex; align-items: center; gap: 7px; justify-content: center; }
+button:hover, .btn:hover { background: var(--blue); color: var(--panel); }
+button:disabled { opacity: .45; cursor: default; }
+button.ghost { background: var(--panel); color: var(--ink); border: 1px solid var(--edge);
+  box-shadow: 0 1px 2px rgba(15,32,56,.09); }
+button.ghost:hover { background: var(--hover); border-color: var(--blue); color: var(--blue); }
+input[type="text"], input[type="search"], input[type="password"], input[type="date"], input[type="number"], input:not([type]), textarea, select {
+  background: var(--panel); color: var(--ink); border: 1px solid var(--edge); border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; font-family: inherit;
+}
+textarea, .sub code { font-family: var(--font-mono); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+input:disabled, textarea:disabled, select:disabled { opacity: .45; cursor: default; }
+
+/* ── Chips / status ─────────────────────────────────────────────── */
+/* Badge text mixes toward --ink: darkens the hue in light mode, lightens it in
+   dark mode (--ink flips), so one expression carries both. At 11px the mid-tone
+   hues alone only reached ~4.75:1 and read washed. */
+/* Badge labels are WORDS (Active, Enabled, strong, idle), not machine data, so
+   they take --font-sans 600 per the --font-mono role note above — mono's fixed
+   advances read ragged at label sizes. .ver is the exception: version pills
+   (v1/v2) are machine data and stay mono. */
+.phase { font-family: var(--font-sans); font-size: 12px; font-weight: 600; padding: 2px 9px;
+  border: 1px solid var(--line); border-radius: 5px; white-space: nowrap; display: inline-flex; align-items: center; }
+/* Inherits .phase's 12px/600 on purpose: mono 11px/600 doubles the top bar of
+   5/7 (same trap as td code above), 12px/600 rasterizes clean. Don't add a
+   font-size here. */
+.phase.ver { font-family: var(--font-mono); }
+.phase.Ready, .phase.ok { color: color-mix(in srgb, var(--good) 72%, var(--ink)); border-color: color-mix(in srgb, var(--good) 45%, var(--line)); background: color-mix(in srgb, var(--good) 8%, transparent); }
+.phase.Deploying, .phase.warn { color: color-mix(in srgb, var(--accent) 72%, var(--ink)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.phase.Failed, .phase.bad { color: color-mix(in srgb, var(--bad) 72%, var(--ink)); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.phase.Idle { color: var(--label); border-color: var(--line); background: color-mix(in srgb, var(--muted) 8%, transparent); }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--muted); }
+.chip code { color: var(--ink); }
+.chip.missing { color: var(--bad); border-style: dashed;
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+.chip.missing code { color: var(--bad); }
+
+/* ── Cards / stat blocks ────────────────────────────────────────── */
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 22px; }
+.card { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 16px 18px;
+  box-shadow: 0 6px 18px -14px rgba(15,32,56,.2); }
+.card h3 { margin: 0 0 8px; font-size: 12.5px; letter-spacing: .04em; text-transform: uppercase;
+  font-family: var(--font-sans); color: var(--label); font-weight: 600; }
+.card .big { font-family: var(--font-cond); font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.card .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+a.card { text-decoration: none; color: inherit; transition: border-color .12s, transform .12s, box-shadow .12s; display: block; }
+a.card:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 12px 24px -16px rgba(30,91,198,.4); }
+a.card .arrow { float: right; color: var(--muted); font-family: var(--font-mono); }
+a.card:hover .arrow { color: var(--blue); }
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--edge); margin: 16px 0 18px; }
+.tabs button { background: transparent; color: var(--muted); border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; padding: 8px 14px; font-family: var(--font-sans); font-size: 13.5px; letter-spacing: .02em; }
+.tabs button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs button:hover { background: transparent; color: var(--blue); }
+
+/* ── Misc ───────────────────────────────────────────────────────── */
+pre.block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px;
+  white-space: pre-wrap; word-break: break-word; font-size: 12.5px; font-family: var(--font-mono);
+  max-height: 460px; overflow: auto; line-height: 1.55; }
+/* Split viewers (skill package, memory store) track the viewport: the row
+   fills the remaining screen height, both columns stretch to the SAME bottom
+   line, and tree/content scroll internally — the page itself doesn't. Pages
+   with extra chrome above the split override --split-offset inline. */
+.split { display: grid; grid-template-columns: 260px 1fr; gap: 16px;
+  height: calc(100vh - var(--split-offset, 175px)); min-height: 280px; }
+.split .tree { overflow-y: auto; }
+.split > div:not(.tree) { display: flex; flex-direction: column; min-height: 0; }
+.split pre.block { flex: 1; max-height: none; min-height: 0; margin: 0; }
+.tree { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 0; }
+.tree button { display: block; width: 100%; text-align: left; background: transparent; color: var(--ink);
+  border: 0; border-radius: 0; padding: 6px 16px; font-family: var(--font-mono); font-size: 12.5px;
+  word-break: break-all; white-space: normal; }
+.tree button.entry { font-weight: 600; background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.tree button:hover { background: var(--hover); color: var(--ink); }
+.tree button.sel { background: var(--hover); color: var(--blue); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+/* LLM wiki: collapsible folder tree. */
+.tree button.tree-folder { font-weight: 600; color: var(--muted); padding-top: 6px; padding-bottom: 6px; }
+.tree .tree-toggle { display: inline-block; width: 14px; text-align: center; color: var(--accent); }
+/* Rendered-markdown page view — same frame as pre.block, flexes in the split. */
+.md-scroll { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 18px; max-height: 460px; overflow: auto; }
+.split .md-scroll { flex: 1; max-height: none; min-height: 0; }
+/* "Wiki Writer" badge (agents list + detail + wiki chip). */
+.badge-writer { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: .02em; vertical-align: middle; white-space: nowrap;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.wiki-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.wiki-meta b { color: var(--ink); font-weight: 600; }
+.formrow { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.empty { color: var(--muted); padding: 30px; text-align: center; border: 1px dashed var(--edge); border-radius: 8px; background: var(--panel); }
+.muted { color: var(--muted); }
+
+/* ── Session view (Managed Agents style) ────────────────────────── */
+/* Pinned shell: header/toolbar/timeline/composer fixed, records scroll. */
+.sv { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 118px); }
+.sv-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.follow-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+  color: var(--muted); margin-left: auto; white-space: nowrap; cursor: pointer; }
+.pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  margin-left: 6px; animation: pulse 1.2s ease-in-out infinite; vertical-align: middle; }
+@keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+/* One-shot blink when the session header token counter updates (keyed remount) */
+.chip.tok-tick { animation: tok-blink .6s ease-out; }
+@keyframes tok-blink {
+  0% { background: color-mix(in srgb, var(--blue) 28%, var(--paper));
+       border-color: var(--blue); color: var(--blue); }
+}
+@media (prefers-reduced-motion: reduce) { .pulse, .chip.tok-tick { animation: none; } .pulse { opacity: .8; } a.card:hover { transform: none; } }
+
+.timeline { display: flex; gap: 2px; height: 22px; padding: 5px; border: 1px solid var(--edge);
+  border-radius: 8px; background: var(--panel); overflow-x: auto;
+  /* Pinned .sv child: without this a tall transcript's flex squeeze thins
+     the bar (empty spans have no min-content height to resist it). */
+  flex-shrink: 0; }
+
+.sv-toolbar { display: flex; gap: 10px; align-items: center; }
+.sv-toolbar select { font-size: 12.5px; }
+
+.detail-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 10px; }
+
+.sv-input { display: flex; gap: 8px; padding: 10px; border: 1px solid var(--edge); border-radius: 10px; background: var(--panel); }
+.sv-input input { flex: 1; }
+button.danger:hover { border-color: var(--bad); color: var(--bad); }
+
+/* Pager + inline link buttons + solid danger */
+.pager { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 16px;
+  font-size: 12.5px; color: var(--muted); font-family: var(--font-mono); }
+.linkbtn { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; font-size: 12.5px; }
+.linkbtn:hover { text-decoration-thickness: 2px; }
+button.danger-solid { background: var(--bad); color: var(--panel); }
+/* Hover darkens in light mode and LIGHTENS in dark — mixing toward #000 in both
+   left the fill mid-tone, where neither --panel (3.58:1) nor #fff (4.37:1) read. */
+button.danger-solid:hover { background: color-mix(in srgb, var(--bad) 82%, light-dark(#000, #fff)); color: var(--panel); }
+input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--blue); cursor: pointer; }
+
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  main { padding: 20px 18px; }
+  h1 { font-size: 24px; }
+}
+
+/* ── Row action icons (download / delete) — quiet, consistent ────── */
+.rowactions { display: inline-flex; gap: 4px; align-items: center; }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  padding: 0; background: transparent; border: 1px solid transparent; border-radius: 7px;
+  color: var(--muted); cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.iconbtn:hover { background: var(--hover); color: var(--ink); border-color: var(--line); }
+.iconbtn.danger:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 9%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+.iconbtn:disabled { opacity: .5; cursor: default; }
+tbody tr .iconbtn { opacity: .55; }
+tbody tr:hover .iconbtn { opacity: 1; }
+.spin { width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 0s; } }
+
+/* ── Primary buttons with icons (Deploy etc.) ───────────────────── */
+button { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+button svg { flex-shrink: 0; }
+button.deploy-sm { padding: 5px 12px; font-size: 12.5px; }
+.iconbtn.ghost { border: 1px solid transparent; }
+/* RefreshButton is a ghost icon button */
+button.ghost svg { color: currentColor; }
+
+/* Deployment download progress bar */
+.dlbar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.dlbar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s ease; }
+
+/* Pagination footer — always shown, controls disable on a single page */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding: 2px 2px; }
+.pager-info { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--ink); letter-spacing: .01em; }
+.pager-btns { display: flex; gap: 8px; }
+/* Solid panel fill so buttons contrast with the paper page bg in both themes */
+.pager-btns button { font-size: 13px; font-weight: 600; padding: 7px 15px; color: var(--ink);
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 7px;
+  box-shadow: 0 1px 2px rgba(15,32,56,.09); }
+.pager-btns button:hover:not(:disabled) { background: var(--hover); border-color: var(--blue); color: var(--blue); }
+/* Disabled = flat grey fill, no shadow, muted text → clearly inactive */
+.pager-btns button:disabled { color: var(--muted); background: var(--line); border-color: var(--edge);
+  box-shadow: none; cursor: default; opacity: 1; font-weight: 500; }
+
+/* ── Modal system (shared dialog primitives) ─────────────────────── */
+.modal-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ink) 42%, transparent); backdrop-filter: blur(2px); }
+.modal { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px;
+  padding: 20px 22px; max-width: calc(100vw - 32px); max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 60px -24px rgba(15,32,56,.45); }
+.modal-title { margin: 0 0 4px; font-family: var(--font-cond); font-size: 20px; font-weight: 600;
+  letter-spacing: .02em; text-transform: uppercase; }
+.modal-sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+.modal-body { overflow-y: auto; padding: 2px; }
+.modal-error { margin-top: 10px; padding: 8px 12px; border-radius: 7px; font-size: 12.5px;
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--line));
+  background: color-mix(in srgb, var(--bad) 8%, transparent); color: var(--bad); }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.modal-msg { margin: 4px 0 2px; font-size: 13.5px; line-height: 1.55; }
+
+.modal-section {
+  margin: 16px 0 10px; padding-bottom: 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line);
+}
+.modal-section:first-child { margin-top: 0; }
+
+.field { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; align-items: center; margin-bottom: 11px; }
+.field-label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.field-label em { color: var(--accent); font-style: normal; }
+.field-control { display: flex; gap: 8px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.field-control > input, .field-control > select, .field-control > textarea { flex: 1; min-width: 0; }
+.field-hint { grid-column: 2; font-size: 11.5px; color: var(--muted); }
+.field.stack { grid-template-columns: 1fr; }
+.field.stack .field-hint { grid-column: 1; }
+.field.stack textarea { width: 100%; }
+
+.checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 12px;
+  border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; width: 100%;
+  max-height: 170px; overflow-y: auto; }
+.checklist label { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+
+.kvrows { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.kvrow { display: flex; gap: 8px; align-items: center; }
+.kvrow input { flex: 1; min-width: 0; }
+
+.profile-head, .profile-row { display: grid; gap: 6px; align-items: center;
+  grid-template-columns: 1.1fr 1.2fr .7fr .7fr .8fr 30px; }
+.profile-head span { font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); font-family: var(--font-mono); }
+.profile-row input { width: 100%; min-width: 0; }
+
+/* Name-as-edit-trigger (deployments / catalog / pools rows) */
+button.namebtn { display: inline; background: none; border: 0; padding: 0; color: var(--blue);
+  text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px;
+  font-size: inherit; font-weight: inherit; font-family: inherit; cursor: pointer; text-align: left; }
+button.namebtn:hover { background: none; color: var(--blue); text-decoration-thickness: 2px; }
+
+/* ── Markdown rendering (session transcripts, previews) ──────────── */
+.md { font-size: 13.5px; line-height: 1.6; word-break: break-word; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-cond); text-transform: none;
+  letter-spacing: 0; line-height: 1.25; margin: 14px 0 6px; }
+/* Only .md h1 clears 19px; h2-h4 land at 16.5/14.5/13.5px, where cond goes
+   dirty — see the --font-cond note above. */
+.md h2, .md h3, .md h4 { font-family: var(--font-sans); }
+.md h1 { font-size: 19px; } .md h2 { font-size: 16.5px; } .md h3 { font-size: 14.5px; } .md h4 { font-size: 13.5px; }
+.md p { margin: 7px 0; }
+.md ul, .md ol { margin: 7px 0; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md code { background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px; }
+.md pre { background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 8px 0; }
+.md pre code { background: none; border: 0; padding: 0; }
+.md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 3px solid var(--edge); color: var(--muted); }
+.md table { font-size: 12.5px; margin: 8px 0; box-shadow: none; }
+.md th, .md td { padding: 6px 10px; }
+.md a { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+
+/* ── Session view: title, meta chips, slide-over sheets ──────────── */
+.sv-titlebar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.sv-title { display: flex; align-items: center; gap: 12px; }
+.metachips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chipbtn { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 11px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--edge); border-radius: 6px;
+  font-weight: 500; box-shadow: 0 1px 2px rgba(15,32,56,.06); }
+.chipbtn:hover { border-color: var(--blue); color: var(--blue); background: var(--panel); }
+.chipbtn svg { width: 13px; height: 13px; }
+
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 92vw; z-index: 25;
+  background: var(--panel); border-left: 1px solid var(--edge);
+  box-shadow: -18px 0 40px -24px rgba(15,32,56,.4); display: flex; flex-direction: column; }
+.sheet-resize { position: absolute; left: -14px; top: 0; bottom: 0; width: 18px; cursor: ew-resize;
+  touch-action: none; }
+/* Drag grabber: one slim pill floating just off the edge — quiet but visible */
+.sheet-resize::before { content: ""; position: absolute; top: 50%; transform: translateY(-50%);
+  left: 5px; width: 4px; height: 36px; border-radius: 2px;
+  background: var(--edge); transition: background .15s, height .15s; }
+.sheet-resize:hover::before { background: var(--accent); height: 48px; }
+/* Always-visible grip so the edge reads as draggable, not just on hover */
+.sheet-resize::after { content: ""; position: absolute; top: 50%; left: 1px; transform: translateY(-50%);
+  width: 5px; height: 46px; border-radius: 3px;
+  background: var(--panel); border: 1px solid var(--edge);
+  box-shadow: -1px 0 4px rgba(15, 32, 56, .18); }
+.sheet-resize:hover::after { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel)); }
+.sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+.sheet-title { margin: 0; font-family: var(--font-cond); font-size: 18px; font-weight: 600;
+  text-transform: none; letter-spacing: .01em; }
+/* Event sheet meta line: type badge + optional tool name + counts. Flex so the
+   reused .trow-chip (fixed width, no side padding) sizes as it does in a row. */
+.sheet-sub { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.sheet-body { padding: 14px 18px; overflow-y: auto; }
+.sheet-sec { margin-bottom: 16px; }
+.sheet-sec h3 { margin: 0 0 8px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+  font-family: var(--font-sans); color: var(--label); font-weight: 600; }
+.sheet .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
+.sheet .tool, .sheet .pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; margin: 0 4px 4px 0;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--paper); font-family: var(--font-mono); }
+.sheet .pill { color: var(--mcp); border-color: color-mix(in srgb, var(--mcp) 40%, var(--line)); }
+
+/* ── Session transcript rows ─────────────────────────────────────── */
+.trows { display: flex; flex-direction: column; border: 1px solid var(--edge); border-radius: 10px;
+  background: var(--panel); overflow: hidden; }
+.trow { display: flex; align-items: center; gap: 12px; padding: 9px 14px; cursor: pointer;
+  border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.trow:last-child { border-bottom: 0; }
+.trow:hover { background: var(--hover); }
+.trow.sel { background: var(--hover); box-shadow: inset 2px 0 0 var(--accent); }
+/* Width fits the longest label ("Subagent") so every chip in the step list
+   shares one column edge — sizing any chip to content breaks the alignment. */
+.trow-chip { flex: none; width: 58px; text-align: center; font-family: var(--font-mono); font-size: 10.5px;
+  font-weight: 600; padding: 2px 0; border-radius: 5px; border: 1px solid var(--line);
+  color: var(--muted); background: var(--paper); }
+/* --accent is mid-tone in BOTH themes (#e8641b / #f2823c) and never flips
+   lightness, so the label is pinned per-theme with literals rather than a
+   token that would flip on its own.
+   Light = WHITE by product decision (2026-07-15): it matches the Agent chip
+   beside it, which is white-on-blue. This is knowingly 3.35:1, under the 4.5:1
+   AA floor for text this small — brand orange was preferred over the contrast.
+   Don't "fix" it back to dark ink without asking; darkening the fill to
+   #c35417 is the way to get white to 4.56:1 if that's ever wanted.
+   Dark stays ink: white on #f2823c is only 2.61:1, worse than light. */
+.trow-chip.user { color: light-dark(#ffffff, #0f2038); background: var(--accent); border-color: var(--accent); }
+/* --blue DOES flip (#1e5bc6 -> #6ba6ff), so this one correctly tracks --panel. */
+.trow-chip.agent { color: var(--panel); background: var(--blue); border-color: var(--blue); }
+.trow-chip.tool { color: #6a49b8; background: color-mix(in srgb, #8a63d2 12%, transparent);
+  border-color: color-mix(in srgb, #8a63d2 45%, var(--line)); }
+.trow-chip.thinking { color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 40%, var(--line)); font-style: italic; }
+.trow-chip.mcp { color: var(--mcp); background: color-mix(in srgb, var(--mcp) 12%, transparent);
+  border-color: color-mix(in srgb, var(--mcp) 45%, var(--line)); }
+/* Skill loads (Skill tool rows, rows.ts rewrites kind): green family, same
+   token + tint recipe as the mcp chip. */
+.trow-chip.skill { color: var(--skill); background: color-mix(in srgb, var(--skill) 12%, transparent);
+  border-color: color-mix(in srgb, var(--skill) 45%, var(--line)); }
+/* Subagent delegation rows (Delegate tool, rows.ts rewrites kind): same
+   token + tint recipe as skill/mcp; shares the fixed chip width (the base
+   width is sized to fit this, the longest label). */
+.trow-chip.subagent { color: var(--subagent);
+  background: color-mix(in srgb, var(--subagent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--subagent) 45%, var(--line)); }
+pre.block.block-error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
+  background: color-mix(in srgb, var(--bad) 7%, var(--paper)); }
+.trow.thinking .trow-title { color: var(--muted); font-style: italic; }
+.trow-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trow-preview { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+
+/* MCP tool calls (mcp__<server>__<tool>): server + tool name in place of
+   the raw SDK string; the trace row swaps its Tool chip for an MCP one
+   (.trow-chip.mcp above), the detail panel uses the inline .mcp-badge. */
+.mcp-badge { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .04em;
+  padding: 1px 5px; margin-right: 6px; border-radius: 4px; font-family: var(--font-mono);
+  color: var(--mcp); background: color-mix(in srgb, var(--mcp) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mcp) 40%, var(--line)); vertical-align: 1px; }
+.mcp-server { color: var(--mcp); font-weight: 600; margin-right: 5px; }
+.mcp-tool { color: var(--ink); }
+.trow-meta { flex: none; display: flex; gap: 12px; align-items: center; font-family: var(--font-mono);
+  font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Embedded images (transcript markdown + outputs preview) and the
+   fullscreen lightbox they open into. */
+.md-img { display: block; max-width: 100%; margin: 8px 0; border: 1px solid var(--edge);
+  border-radius: 8px; cursor: zoom-in; background: var(--paper); }
+.lightbox { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+  background: color-mix(in srgb, #0a0f1a 82%, transparent); cursor: zoom-out; }
+.lightbox img { max-width: 96vw; max-height: 96vh; border-radius: 6px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, .55); }
+
+/* In-flight item: the chip of the running tool row (or the synthetic
+   generating/starting row) pulses slowly; its counter ticks live. */
+.trow.active .trow-chip, .trow.activity .trow-chip { animation: pulse 2.4s ease-in-out infinite; }
+.trow.activity { cursor: default; }
+.trow.activity:hover { background: transparent; }
+.trow-elapsed { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .trow.active .trow-chip, .trow.activity .trow-chip { animation: none; }
+}
+
+/* Timeline: row-grouped segments (replaces the per-event sliver strip) */
+.timeline span { opacity: .55; border-radius: 2px; cursor: pointer; }
+.timeline span:hover, .timeline span.sel { opacity: 1; }
+.timeline span.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* ── File-attachment control (create dialog + session composer) ──── */
+.attach { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.chip-x { background: none; border: 0; padding: 0 0 0 3px; color: var(--muted);
+  cursor: pointer; font-size: 10px; line-height: 1; }
+.chip-x:hover { background: none; color: var(--bad); }
+.sv-composer { display: flex; flex-direction: column; gap: 6px; }
+
+/* Deployment detail overview: .row previously had layout only inside .sheet */
+.card .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
+
+/* Deployment realtime stats (spec 2026-07-10): stacked area + dots + tooltip */
+.rt2 { display: grid; grid-template-columns: 48px 1fr; grid-template-rows: 280px 26px;
+  margin-bottom: 22px; }
+.rt2-y { grid-row: 1; display: flex; flex-direction: column; justify-content: space-between;
+  align-items: flex-end; padding: 0 8px 0 0; font-size: 11px; color: var(--muted);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.rt2-y span { transform: translateY(-50%); } .rt2-y span:first-child { transform: none; }
+.rt2-y span:last-child { transform: translateY(4px); }
+.rt2-plot { position: relative; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); overflow: visible; }
+.rt2-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rt2-grid { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
+/* Flat translucent fills — no gradients, matches the usage bar charts. */
+.rt2-area-in { fill: color-mix(in srgb, var(--chart1) 22%, transparent); }
+.rt2-area-out { fill: color-mix(in srgb, var(--chart2) 22%, transparent); }
+.rt2-line-in, .rt2-line-out { fill: none; stroke-width: 1.6; vector-effect: non-scaling-stroke;
+  stroke-linecap: round; stroke-linejoin: round; }
+.rt2-line-in { stroke: var(--chart1); }
+.rt2-line-out { stroke: var(--chart2); }
+.rt2-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--edge);
+  pointer-events: none; }
+.rt2-tip { position: absolute; top: 8px; margin-left: 10px; z-index: 5; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(15,32,56,.14); padding: 8px 10px; font-size: 12px;
+  line-height: 1.7; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rt2-tip-t { color: var(--muted); font-size: 11px; font-family: var(--font-mono); }
+.rt2-yunit { position: absolute; top: 6px; left: 8px; font-size: 10px; color: var(--muted);
+  font-family: var(--font-mono); letter-spacing: .06em; }
+.rt2-x { grid-column: 2; position: relative; font-size: 11px; color: var(--muted);
+  font-family: var(--font-mono); }
+.rt2-x span { position: absolute; top: 6px; transform: translateX(-50%); }
+.rt2-x .rt2-xunit { right: 0; left: auto; transform: none; font-size: 10px; letter-spacing: .06em; }
+.livedot { width: 8px; height: 8px; border-radius: 50%; background: var(--edge); display: inline-block; }
+.livedot.on { background: #16a34a; animation: pulse 2.4s ease-in-out infinite; }
+
+/* Deployment trace window */
+.trace-card { border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+  padding: 10px 12px; margin-bottom: 10px; }
+.trace-card.err { border-color: color-mix(in srgb, #dc2626 45%, var(--line)); }
+/* Eval-toggle chip (fix wave I): a <button class="chip"> — the .chip class
+   wins padding/border/font-size by specificity, but native button chrome
+   (appearance + its own line-height/margin) still adds height beyond that
+   box model, taller than the sibling .chip spans. Neutralize just that. */
+button.chip { appearance: none; -webkit-appearance: none; font-family: inherit; line-height: inherit; margin: 0; }
+.trace-head { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.trace-head .chip.request { color: var(--blue); }
+.trace-head .chip.response { color: #16a34a; }
+.trace-head .chip.error { color: #dc2626; }
+.trace-msg summary { cursor: pointer; font-size: 12.5px; padding: 3px 0; }
+.trace-msg pre { margin-top: 6px; }
+
+/* MCP server picker: left-aligned dropdown with logo tiles (spec 2026-07-13, amended 2026-07-13) */
+.mcp-picker { flex: 1; min-width: 0; }
+.mcp-picker-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; text-align: left; font-family: inherit; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--edge); border-radius: 4px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+.mcp-picker-btn:hover { background: var(--hover); border-color: var(--blue); color: var(--ink); }
+.mcp-picker-btn:disabled { opacity: .5; cursor: default; }
+.mcp-picker-chevron { color: var(--muted); font-size: 15px; }
+/* Normal document flow (not absolute/fixed) — expands inline below the trigger button, so
+   the only scrollbars are the modal's own plus the bounded .mcp-options list below. */
+.mcp-panel { width: 100%; box-sizing: border-box; margin-top: 4px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+.mcp-search { width: 100%; margin-bottom: 6px; box-sizing: border-box; }
+.mcp-options { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; }
+.mcp-option { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: var(--panel); color: var(--ink); border: 1px solid transparent; border-radius: 4px;
+  padding: 6px 8px; font-size: 13px; cursor: pointer; }
+.mcp-option:hover { border-color: var(--accent); background: var(--hover); color: var(--ink); }
+.mcp-option-text { display: flex; flex-direction: column; min-width: 0; text-align: left; }
+.mcp-option-url, .mcp-option-desc { font-size: 11.5px; }
+.mcp-logo { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 4px; display: flex;
+  align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; }
+.mcp-logo-custom { background: var(--edge); color: var(--ink); font-size: 14px; }
+.mcp-custom-form { display: flex; flex-direction: column; gap: 8px; }
+.mcp-custom-form input { width: 100%; }
+
+/* Workspace switcher (spec 2026-07-13): MCP-picker-style dropdown in the nav */
+.ws-picker { position: relative; }
+.ws-current { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  font-family: inherit; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--edge); border-radius: 4px; padding: 5px 8px; font-size: 13px; cursor: pointer; }
+.ws-current:hover { background: var(--hover); border-color: var(--blue); color: var(--ink); }
+.ws-stripe { align-self: stretch; flex: 0 0 auto; width: 4px; min-height: 20px; border-radius: 2px; }
+.ws-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ws-text strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-id { font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-caret { color: var(--muted); font-size: 15px; }
+.ws-panel { position: absolute; z-index: 40; left: 0; right: 0; margin-top: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25); display: flex; flex-direction: column; gap: 2px;
+  max-height: 320px; overflow-y: auto; }
+.ws-option { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  font-family: inherit; background: var(--panel); color: var(--ink);
+  border: 1px solid transparent; border-radius: 4px; padding: 5px 6px; font-size: 13px; cursor: pointer; }
+.ws-option:hover { border-color: var(--accent); background: var(--hover); color: var(--ink); }
+.ws-option:hover .ws-text strong { color: var(--ink); }
+.ws-option:hover .ws-id { color: var(--muted); }
+.ws-option.active { border-color: var(--blue); }
+.ws-flag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--bad); }
+.ws-new { color: var(--muted); justify-content: center; }
+
+/* Link-styled button (navigation affordance, not a text button) — used for
+   the workspace id-as-edit-trigger convention. */
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--blue); cursor: pointer; }
+.linklike:hover { text-decoration: underline; }
+.linklike code { color: inherit; }
+
+/* Workspace deletion progress (inline, in the status cell) */
+.ws-progress-wrap .iconbtn { width: 22px; height: 22px; margin-bottom: 2px; }
+.ws-progress { list-style: none; margin: 6px 0 0; padding: 0; font-size: 11.5px; color: var(--muted); }
+.ws-progress li { display: flex; align-items: center; gap: 5px; }
+.ws-progress li.done { color: var(--good); }
+.ws-doomed { margin: 8px 0; padding-left: 18px; font-size: 13px; }
+
+/* Settings page: spec-sheet panels — each row is [checkbox | name | hint],
+   hairline-divided, whole row clickable. Matches the card vocabulary. */
+.setpanel { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px;
+            padding: 14px 18px 6px; margin-bottom: 16px; max-width: 720px; }
+.setpanel > h2 { margin: 2px 0 2px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+                 color: var(--muted); font-weight: 650; }
+.setpanel > .setsub { margin: 0 0 4px; font-size: 12px; color: var(--muted); }
+.setrow { display: grid; grid-template-columns: 24px 230px 1fr; gap: 0 14px; align-items: baseline;
+          padding: 11px 0; cursor: pointer; }
+.setrow + .setrow, .setsub + .setrow, h2 + .setrow { border-top: 1px solid var(--line); }
+.setpanel > .setsub + .setrow { border-top: 0; }
+.setrow input[type="checkbox"] { justify-self: center; position: relative; top: 1px; cursor: pointer; }
+.setrow-name { font-size: 13px; font-weight: 600; }
+.setrow-hint { font-size: 12px; color: var(--muted); }
+.setrow.plain { cursor: default; }
+.setrow select { justify-self: start; }
+/* In-panel section: a step stronger than row hairlines (--edge vs --line). */
+.setsection { padding: 16px 0 2px; margin-top: 4px; border-top: 1px solid var(--edge); }
+.setsection h3 { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+                 color: var(--muted); font-weight: 650; }
+.setsection p { margin: 3px 0 4px; font-size: 12px; color: var(--muted); }
+.setsection + .setrow { border-top: 0; }
+@media (max-width: 640px) {
+  .setrow { grid-template-columns: 24px 1fr; }
+  .setrow-hint { grid-column: 2; padding-top: 2px; }
+}
+
+/* ── Label combobox: editable text input with filtered dropdown ────── */
+.lcbx { position: relative; flex: 1; }
+.lcbx > input { width: 100%; }
+.lcbx-panel {
+  position: absolute; z-index: 30; top: calc(100% + 2px); left: 0; right: 0;
+  max-height: 220px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+.lcbx-option {
+  display: block; width: 100%; text-align: left; padding: 6px 10px;
+  background: none; border: none; color: inherit; font-family: var(--font-mono); font-size: 12px; cursor: pointer;
+}
+.lcbx-option:hover { background: var(--hover, rgba(127,127,127,0.15)); }
+
+/* Settings accordion: sections stack into ONE connected card (card vocabulary —
+   --thead header fill like table heads; hairline dividers between sections). */
+.setacc-group { border: 1px solid var(--edge); border-radius: 10px; overflow: hidden;
+                background: var(--panel); margin-bottom: 16px; }
+.setacc + .setacc { border-top: 1px solid var(--edge); }
+.setacc > summary {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  cursor: pointer; list-style: none; user-select: none;
+  font-size: 14px; font-weight: 600; color: var(--ink); background: var(--thead);
+}
+.setacc > summary:hover { background: var(--hover); }
+.setacc[open] > summary { border-bottom: 1px solid var(--edge); }
+.setacc > summary::-webkit-details-marker { display: none; }
+.setacc > summary > svg { color: var(--muted); }
+.setacc > summary::before {
+  content: "▸"; font-size: 17px; color: var(--muted);
+  display: inline-block; transition: transform .15s ease;
+}
+.setacc[open] > summary::before { transform: rotate(90deg); }
+/* Panel is the accordion body, not a detached card. */
+.setacc > .setpanel { border: 0; border-radius: 0; margin: 0; max-width: none; background: transparent; }

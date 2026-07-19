@@ -1,0 +1,17 @@
+**/node_modules
+**/.next
+**/__pycache__
+console/
+operator/
+tmp/
+docs/
+*.log
+*.err
+control-plane/cp*.log
+control-plane/cp*.err.log
+session-runner;C/
+.git
+.gitattributes
+python-client/
+deploy/
+.superpowers/

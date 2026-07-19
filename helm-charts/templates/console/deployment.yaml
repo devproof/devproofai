@@ -1,0 +1,45 @@
+{{- if .Values.console.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console
+  {{- with .Values.console.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.console.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "devproof.app" "console" }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "devproof.app" "console" }}
+        {{- with .Values.console.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.console.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "devproof.podScheduling" .Values.console | nindent 6 }}
+      {{- include "devproof.pullSecrets" $ | nindent 6 }}
+      containers:
+        - name: console
+          image: {{ include "devproof.image" .Values.console.image }}
+          imagePullPolicy: {{ .Values.console.image.pullPolicy }}
+          env:
+            - { name: DEVPROOF_API, value: http://controlplane.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controlplane.service.port }} }
+          ports: [{ containerPort: 7090 }]
+          readinessProbe:
+            httpGet: { path: /, port: 7090 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.console.resources | nindent 12 }}
+{{- end }}

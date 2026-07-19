@@ -1,0 +1,3 @@
+*.sh text eol=lf
+scripts/version.sh text eol=lf
+control-plane/sql/*.sql text eol=lf

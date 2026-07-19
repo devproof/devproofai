@@ -1,0 +1,220 @@
+{{- if and .Values.crds.install .Values.llmkube.enabled }}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: modeldeployments.serving.devproof.ai
+spec:
+  group: serving.devproof.ai
+  names:
+    kind: ModelDeployment
+    listKind: ModelDeploymentList
+    plural: modeldeployments
+    shortNames:
+    - mdep
+    singular: modeldeployment
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .spec.poolRef
+      name: Pool
+      type: string
+    - jsonPath: .status.endpoint
+      name: Endpoint
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ModelDeployment deploys a catalog model onto a ModelPool.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ModelDeploymentSpec binds a model to a pool.
+            properties:
+              catalogId:
+                description: CatalogID references the Devproof catalog entry this
+                  spec was resolved from.
+                type: string
+              engine:
+                description: |-
+                  Engine selects the inference engine. "sglang" maps to the LLMkube
+                  SGLang runtime; auto/llama.cpp/vllm keep the provider default engine.
+                enum:
+                - auto
+                - llama.cpp
+                - vllm
+                - sglang
+                type: string
+              model:
+                description: ModelSource identifies the model artifact to serve.
+                properties:
+                  contextTokens:
+                    description: |-
+                      ContextTokens is the context window to serve with (engine ctx-size).
+                      Engine default applies when 0.
+                    format: int32
+                    type: integer
+                  format:
+                    description: Format is the artifact format.
+                    enum:
+                    - gguf
+                    - safetensors
+                    type: string
+                  source:
+                    description: Source is the download URL (e.g. HuggingFace resolve
+                      URL).
+                    type: string
+                required:
+                - format
+                - source
+                type: object
+              poolRef:
+                description: PoolRef names the ModelPool (same namespace).
+                type: string
+              reasoning:
+                description: Reasoning caps the model's thinking output (llama.cpp
+                  runtimes only).
+                properties:
+                  budgetTokens:
+                    description: BudgetTokens caps reasoning tokens per response;
+                      0 disables thinking.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  effort:
+                    description: Effort is the catalog effort label this budget was
+                      resolved from (display).
+                    type: string
+                required:
+                - budgetTokens
+                type: object
+              replicas:
+                description: ReplicaBounds bounds autoscaling.
+                properties:
+                  idleMinutes:
+                    description: |-
+                      IdleMinutes is the scale-to-zero window (min=0 only): after this many
+                      minutes with zero in-flight requests the scaler parks the deployment at
+                      zero replicas (phase Idle); it wakes on the first request. 0 = default
+                      (15). Spec 2026-07-15.
+                    format: int32
+                    maximum: 1440
+                    minimum: 0
+                    type: integer
+                  max:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  min:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  reserve:
+                    description: |-
+                      Reserve keeps this many warm replicas above current demand so bursts
+                      don't wait for scale-up (scaler input; 0 = scale on demand only).
+                    format: int32
+                    minimum: 0
+                    type: integer
+                required:
+                - max
+                - min
+                type: object
+              resources:
+                additionalProperties:
+                  type: string
+                description: 'Resources are per-replica requests (keys: cpu, memory,
+                  gpu).'
+                type: object
+              targetTokensPerSec:
+                description: TargetTokensPerSec is the desired aggregate capacity
+                  (sizing input).
+                format: int32
+                type: integer
+            required:
+            - model
+            - poolRef
+            - replicas
+            type: object
+          status:
+            description: ModelDeploymentStatus mirrors provider state.
+            properties:
+              activity:
+                description: |-
+                  Activity is a DISPLAY-ONLY overlay on Phase: the deployment is moving
+                  between replica counts (spec 2026-07-15 badges). Nothing routes on it.
+                  Empty (omitted) means "no overlay: show Phase" — omitempty matters, or
+                  the enum below would reject the empty string.
+                enum:
+                - ScalingUp
+                - ScalingDown
+                type: string
+              downloadPercent:
+                description: DownloadPercent is 0-100 while the model weights are
+                  downloading (-1 = unknown).
+                format: int32
+                type: integer
+              effectiveContextTokens:
+                description: |-
+                  EffectiveContextTokens is the context window actually served — the
+                  spec value clamped to the operator's KV-cache memory cap. 0 = engine
+                  default. Lets the control plane and console see a capped window
+                  instead of trusting spec.model.contextTokens.
+                format: int32
+                type: integer
+              endpoint:
+                type: string
+              message:
+                type: string
+              phase:
+                enum:
+                - Pending
+                - Downloading
+                - Copying
+                - Deploying
+                - Ready
+                - Failed
+                - Idle
+                type: string
+              provisioned:
+                description: |-
+                  Provisioned goes true once the deployment has served and stays true: its
+                  weights are cached, so later pod starts are scale-ups, not deployments.
+                type: boolean
+              queueDepth:
+                description: |-
+                  QueueDepth is requests processing+deferred summed across replicas,
+                  published by the operator's scaler; -1 = unknown (no replica reachable).
+                format: int32
+                type: integer
+              readyReplicas:
+                format: int32
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+{{- end }}

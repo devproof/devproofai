@@ -1,0 +1,16 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devproof-pg-initdb
+data:
+  # Runs only on first init of an empty data dir. Creates the non-superuser
+  # app role (spec: admin + operations credentials are separate).
+  10-app-role.sh: |
+    #!/bin/bash
+    set -e
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -v app_pw="$DEVPROOF_APP_PASSWORD" <<-SQL
+      CREATE ROLE devproof LOGIN PASSWORD :'app_pw';
+      CREATE DATABASE devproof OWNER devproof;
+    SQL
+{{- end }}

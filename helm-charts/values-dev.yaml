@@ -1,0 +1,25 @@
+# docker-desktop dev preset. CP and console run OUT of cluster (CLAUDE.md run
+# block); fixed dev credentials keep the documented localhost URLs working.
+# The ghcr.io/devproof packages are PRIVATE: the ghcr-pull secret is created
+# OUT of band, once, in the devproof AND devproof-agents namespaces (PAT with
+# read:packages; never committed):
+#   kubectl create secret docker-registry ghcr-pull -n <ns> \
+#     --docker-server=ghcr.io --docker-username=devproof --docker-password=<PAT>
+registryAuth:
+  existingSecret: ghcr-pull
+llmkube:
+  imagePullSecrets: [{ name: ghcr-pull }]
+controlplane:
+  enabled: false
+console:
+  enabled: false
+operator:
+  controlPlaneUrl: http://host.docker.internal:7080
+postgres:
+  auth:
+    adminPassword: devproof-admin-dev
+    appPassword: devproof-dev        # matches the CP's default dev DB URL
+minio:
+  auth:
+    rootUser: devproof
+    rootPassword: devproof-dev-secret

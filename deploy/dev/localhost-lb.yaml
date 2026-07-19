@@ -1,0 +1,27 @@
+# Dev-only convenience (docker-desktop): LoadBalancer services bind to
+# localhost, so out-of-cluster dev processes (control plane, Claude Code, psql)
+# reach in-cluster services WITHOUT kubectl port-forward tunnels.
+# Ports match the historical forward ports so nothing else changes.
+apiVersion: v1
+kind: Service
+metadata: { name: postgres-localhost, namespace: devproof }
+spec:
+  type: LoadBalancer
+  selector: { app: devproof-postgres }
+  ports: [{ port: 15432, targetPort: 5432 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio-localhost, namespace: devproof }
+spec:
+  type: LoadBalancer
+  selector: { app: devproof-minio }
+  ports: [{ port: 19000, targetPort: 9000 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: gateway-localhost, namespace: devproof }
+spec:
+  type: LoadBalancer
+  selector: { app: devproof-gateway }
+  ports: [{ port: 14000, targetPort: 4000 }]

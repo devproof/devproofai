@@ -1,0 +1,18 @@
+{{- $ns := include "devproof.gatewayNamespace" $ }}
+{{- $existing := lookup "v1" "ConfigMap" $ns "litellm-config" }}
+{{- $cfg := "" }}
+{{- if $existing }}{{ $cfg = index $existing.data "config.yaml" }}{{ end }}
+{{- $cfg = $cfg | default ($.Files.Get "files/gateway-bootstrap-config.yaml") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: {{ $ns }}
+data:
+  # Helm-owned: shipped with the chart, upgraded normally.
+  custom_callbacks.py: |
+{{ $.Files.Get "files/custom_callbacks.py" | indent 4 }}
+  # CP-owned at runtime (syncGateway merge-patches this key); helm re-emits
+  # the live value verbatim on upgrade, bootstrap content on first install.
+  config.yaml: |
+{{ $cfg | indent 4 }}

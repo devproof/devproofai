@@ -1,0 +1,3 @@
+{{- if .Values.controlplane.enabled }}
+{{ include "devproof.service" (dict "root" $ "name" "controlplane" "component" "controlplane" "svc" .Values.controlplane.service "targetPort" 7080) }}
+{{- end }}

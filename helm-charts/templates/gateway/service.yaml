@@ -1,0 +1,1 @@
+{{ include "devproof.service" (dict "root" $ "name" "gateway" "component" "gateway" "svc" .Values.gateway.service "targetPort" 4000 "namespace" (include "devproof.gatewayNamespace" $)) }}

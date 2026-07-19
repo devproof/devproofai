@@ -1,0 +1,3004 @@
+# Devproof AI curated model catalog.
+#
+# HOW TO CONFIGURE THIS CATALOG
+#   Each entry is one deployable (family × size × quantization). Add/edit entries
+#   here and restart the control plane (or, once packaged, it hot-reloads).
+#   Custom/private models: point `source` at any HuggingFace resolve URL (GGUF)
+#   or repo (safetensors); set `recommendedEngine` (llama.cpp for GGUF, vllm for
+#   safetensors). Per-workspace overrides can be layered later.
+#
+# SCHEMA (per entry)
+#   id, family, displayName, parameters, format(gguf|safetensors), quantization,
+#   source, license, recommendedEngine, toolCalling(strong|basic|none),
+#   contextTokens, requirements{vramGB,diskGB,gpus}
+#   resources{cpu,memory}: MANDATORY per-replica k8s requests (deploy prefill;
+#     assignment rule in docs/superpowers/specs/2026-07-16-deployment-resources-design.md)
+#   capacityProfiles[]: one per hardware option the UI offers:
+#     gpuType, instanceType, gpusPerReplica, vramGB, estTokensPerSec
+#
+# INSTANCE REFERENCE
+#   cpu-4vcpu      : CPU only
+#   g4dn.xlarge    : 1× NVIDIA T4  16 GB
+#   g5.xlarge      : 1× NVIDIA A10G 24 GB
+#   g6e.xlarge     : 1× NVIDIA L40S 48 GB
+#   a100-80gb x1   : 1× NVIDIA A100 80 GB
+#   a100-80gb x2   : 2× NVIDIA A100 80 GB
+#   a100-80gb x4   : 4× NVIDIA A100 80 GB
+#   h100-80gb x8   : 8× NVIDIA H100 80 GB
+
+models:
+  # ── Qwen ────────────────────────────────────────────────────────────────
+  - id: qwen2.5-0.5b-instruct-q4
+    family: qwen
+    displayName: "Qwen 2.5 0.5B Instruct"
+    parameters: 0.5B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+    license: apache-2.0
+    releaseDate: "2024-09-19"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 20 }
+
+  # ── Small test models (GGUF, a few GB, run on the CPU pool) ──────────────
+  - id: llama-3.2-1b-instruct-q4
+    family: llama
+    displayName: "Llama 3.2 1B Instruct"
+    parameters: 1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+    license: llama3.2
+    releaseDate: "2024-09-25"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: smollm2-1.7b-instruct-q4
+    family: smollm
+    displayName: "SmolLM2 1.7B Instruct"
+    parameters: 1.7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-10-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 15 }
+
+  - id: qwen2.5-1.5b-instruct-q4
+    family: qwen
+    displayName: "Qwen 2.5 1.5B Instruct"
+    parameters: 1.5B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+    license: apache-2.0
+    releaseDate: "2024-09-19"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 16 }
+
+  - id: gemma-2-2b-it-q4
+    family: gemma
+    displayName: "Gemma 2 2B Instruct"
+    parameters: 2B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2024-07-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 12 }
+
+  - id: qwen2.5-3b-instruct-q4
+    family: qwen
+    displayName: "Qwen 2.5 3B Instruct"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+    license: qwen
+    releaseDate: "2024-09-19"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 10 }
+
+  - id: llama-3.2-3b-instruct-q4
+    family: llama
+    displayName: "Llama 3.2 3B Instruct"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+    license: llama3.2
+    releaseDate: "2024-09-25"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: qwen2.5-7b-instruct-q4
+    family: qwen
+    displayName: "Qwen 2.5 7B Instruct"
+    parameters: 7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf
+    license: apache-2.0
+    releaseDate: "2024-09-19"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 6, diskGB: 5, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 55 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 90 }
+
+  - id: qwen2.5-coder-7b-instruct
+    family: qwen
+    displayName: "Qwen 2.5 Coder 7B"
+    parameters: 7B
+    format: safetensors
+    source: https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct
+    license: apache-2.0
+    releaseDate: "2024-09-19"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 18, diskGB: 16, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 75 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 130 }
+
+  - id: qwen2.5-32b-instruct
+    family: qwen
+    displayName: "Qwen 2.5 32B Instruct"
+    parameters: 32B
+    format: safetensors
+    source: https://huggingface.co/Qwen/Qwen2.5-32B-Instruct
+    license: apache-2.0
+    releaseDate: "2024-09-19"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 70, diskGB: 65, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 60 }
+
+  - id: qwen2.5-72b-instruct
+    family: qwen
+    displayName: "Qwen 2.5 72B Instruct"
+    parameters: 72B
+    format: safetensors
+    source: https://huggingface.co/Qwen/Qwen2.5-72B-Instruct
+    license: qwen
+    releaseDate: "2024-09-19"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 150, diskGB: 145, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 45 }
+
+  # ── Llama ───────────────────────────────────────────────────────────────
+  - id: llama-3.1-8b-instruct-q4
+    family: llama
+    displayName: "Llama 3.1 8B Instruct"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+    license: llama3.1
+    releaseDate: "2024-07-23"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 7, diskGB: 5, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 50 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 85 }
+
+  - id: llama-3.3-70b-instruct
+    family: llama
+    displayName: "Llama 3.3 70B Instruct"
+    parameters: 70B
+    format: safetensors
+    source: https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct
+    license: llama3.3
+    releaseDate: "2024-12-06"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 145, diskGB: 140, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 42 }
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 95 }
+
+  # ── Mistral ─────────────────────────────────────────────────────────────
+  - id: mistral-7b-instruct-v0.3-q4
+    family: mistral
+    displayName: "Mistral 7B Instruct v0.3"
+    parameters: 7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-05-22"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 6, diskGB: 5, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 52 }
+
+  - id: mistral-small-24b-instruct
+    family: mistral
+    displayName: "Mistral Small 3 24B"
+    parameters: 24B
+    format: safetensors
+    source: https://huggingface.co/mistralai/Mistral-Small-24B-Instruct-2501
+    license: apache-2.0
+    releaseDate: "2025-01-30"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 32768
+    requirements: { vramGB: 52, diskGB: 48, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 65 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 90 }
+
+  # ── DeepSeek ────────────────────────────────────────────────────────────
+  - id: deepseek-r1-distill-qwen-7b
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Qwen 7B"
+    parameters: 7B
+    format: safetensors
+    source: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: vllm
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 18, diskGB: 16, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: deepseek-r1-distill-llama-70b
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Llama 70B"
+    parameters: 70B
+    format: safetensors
+    source: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: vllm
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 145, diskGB: 140, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  # ── Google Gemma ────────────────────────────────────────────────────────
+  - id: gemma-2-9b-it-q4
+    family: gemma
+    displayName: "Gemma 2 9B Instruct"
+    parameters: 9B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2024-06-27"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 78 }
+
+  - id: gemma-2-27b-it
+    family: gemma
+    displayName: "Gemma 2 27B Instruct"
+    parameters: 27B
+    format: safetensors
+    source: https://huggingface.co/google/gemma-2-27b-it
+    license: gemma
+    releaseDate: "2024-06-27"
+    recommendedEngine: vllm
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 58, diskGB: 54, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 55 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 80 }
+
+  # ── Microsoft Phi ───────────────────────────────────────────────────────
+  - id: phi-4-14b
+    family: phi
+    displayName: "Phi-4 14B"
+    parameters: 14B
+    format: safetensors
+    source: https://huggingface.co/microsoft/phi-4
+    license: mit
+    releaseDate: "2024-12-12"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 16384
+    requirements: { vramGB: 30, diskGB: 28, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.2xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 48 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 95 }
+
+  # ── Zhipu GLM ───────────────────────────────────────────────────────────
+  - id: glm-4-9b-chat
+    family: glm
+    displayName: "GLM-4 9B Chat"
+    parameters: 9B
+    format: safetensors
+    source: https://huggingface.co/THUDM/glm-4-9b-chat
+    license: glm-4
+    releaseDate: "2024-06-05"
+    recommendedEngine: vllm
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 22, diskGB: 19, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 68 }
+
+  # ── Unsloth catalog (unsloth.ai model catalog, imported 2026-07-12) ─────
+  # qwen
+  - id: qwen3-0.6b-q4
+    family: qwen
+    displayName: "Qwen3 0.6B"
+    parameters: 0.6B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: qwen2.5-coder-0.5b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 0.5B Instruct 128K"
+    parameters: 0.5B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-0.5B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-0.5B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: qwen3.5-0.8b-q4
+    family: qwen
+    displayName: "Qwen3.5 0.8B"
+    parameters: 0.8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-03-01"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: qwen2.5-coder-1.5b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 1.5B Instruct 128K"
+    parameters: 1.5B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-1.5B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: qwen3-1.7b-q4
+    family: qwen
+    displayName: "Qwen3 1.7B"
+    parameters: 1.7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: qwen3.5-2b-q4
+    family: qwen
+    displayName: "Qwen3.5 2B"
+    parameters: 2B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: qwen2.5-coder-3b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 3B Instruct 128K"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-3B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-3B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: qwen3-4b-instruct-2507-q4
+    family: qwen
+    displayName: "Qwen3 4B Instruct 2507"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-08-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: qwen3-4b-thinking-2507-q4
+    family: qwen
+    displayName: "Qwen3 4B Thinking 2507"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-4B-Thinking-2507-GGUF/resolve/main/Qwen3-4B-Thinking-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-08-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: qwen3-4b-q4
+    family: qwen
+    displayName: "Qwen3 4B"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: qwen3.5-4b-q4
+    family: qwen
+    displayName: "Qwen3.5 4B"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-03-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 4, gpus: 0 }
+    resources: { cpu: "2", memory: "6Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: qwen2.5-coder-7b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 7B Instruct 128K"
+    parameters: 7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-7B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: qwen3-8b-q4
+    family: qwen
+    displayName: "Qwen3 8B"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: qwen3.5-9b-q4
+    family: qwen
+    displayName: "Qwen3.5 9B"
+    parameters: 9B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 8, diskGB: 7, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: qwen2.5-coder-14b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 14B Instruct 128K"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-14B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: qwen3-14b-q4
+    family: qwen
+    displayName: "Qwen3 14B"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: qwen3.5-27b-q4
+    family: qwen
+    displayName: "Qwen3.5 27B"
+    parameters: 27B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-27B-GGUF/resolve/main/Qwen3.5-27B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-24"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 22, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: qwen3.6-27b-q4
+    family: qwen
+    displayName: "Qwen3.6 27B"
+    parameters: 27B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.6-27B-GGUF/resolve/main/Qwen3.6-27B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-22"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 22, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: qwen3-30b-a3b-instruct-2507-q4
+    family: qwen
+    displayName: "Qwen3 30B A3B Instruct 2507"
+    parameters: 30B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF/resolve/main/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 24, diskGB: 20, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3-30b-a3b-thinking-2507-q4
+    family: qwen
+    displayName: "Qwen3 30B A3B Thinking 2507"
+    parameters: 30B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-30B-A3B-Thinking-2507-GGUF/resolve/main/Qwen3-30B-A3B-Thinking-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 24, diskGB: 20, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3-30b-a3b-q4
+    family: qwen
+    displayName: "Qwen3 30B A3B"
+    parameters: 30B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 24, diskGB: 20, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3-coder-30b-a3b-instruct-q4
+    family: qwen
+    displayName: "Qwen3 Coder 30B A3B Instruct"
+    parameters: 30B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-31"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 24, diskGB: 20, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3-32b-q4
+    family: qwen
+    displayName: "Qwen3 32B"
+    parameters: 32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-32B-GGUF/resolve/main/Qwen3-32B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 25, diskGB: 21, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen2.5-coder-32b-instruct-128k-q4
+    family: qwen
+    displayName: "Qwen2.5 Coder 32B Instruct 128K"
+    parameters: 32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen2.5-Coder-32B-Instruct-128K-GGUF/resolve/main/Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-11-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 25, diskGB: 21, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwq-32b-q4
+    family: qwen
+    displayName: "QwQ 32B"
+    parameters: 32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/QwQ-32B-GGUF/resolve/main/QwQ-32B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-03-05"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 25, diskGB: 21, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3.5-35b-a3b-q4
+    family: qwen
+    displayName: "Qwen3.5 35B A3B"
+    parameters: 35B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-35B-A3B-GGUF/resolve/main/Qwen3.5-35B-A3B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-24"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 28, diskGB: 23, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3.6-35b-a3b-q4
+    family: qwen
+    displayName: "Qwen3.6 35B A3B"
+    parameters: 35B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-16"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 28, diskGB: 23, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: qwen3-next-80b-a3b-instruct-q4
+    family: qwen
+    displayName: "Qwen3 Next 80B A3B Instruct"
+    parameters: 80B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-Next-80B-A3B-Instruct-GGUF/resolve/main/Qwen3-Next-80B-A3B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-09-11"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 60, diskGB: 50, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  - id: qwen3-next-80b-a3b-thinking-q4
+    family: qwen
+    displayName: "Qwen3 Next 80B A3B Thinking"
+    parameters: 80B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-Next-80B-A3B-Thinking-GGUF/resolve/main/Qwen3-Next-80B-A3B-Thinking-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-09-11"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 60, diskGB: 50, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  - id: qwen3-coder-next-q4
+    family: qwen
+    displayName: "Qwen3 Coder Next"
+    parameters: 80B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-Coder-Next-GGUF/resolve/main/Qwen3-Coder-Next-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-03"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 60, diskGB: 50, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  - id: qwen3.5-122b-a10b-q4
+    family: qwen
+    displayName: "Qwen3.5 122B A10B"
+    parameters: 122B-A10B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-122B-A10B-GGUF/resolve/main/Q4_K_M/Qwen3.5-122B-A10B-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-24"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 93, diskGB: 78, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: qwen3-235b-a22b-instruct-2507-q4
+    family: qwen
+    displayName: "Qwen3 235B A22B Instruct 2507"
+    parameters: 235B-A22B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-235B-A22B-Instruct-2507-GGUF/resolve/main/Q4_K_M/Qwen3-235B-A22B-Instruct-2507-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-21"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 172, diskGB: 143, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: qwen3-235b-a22b-thinking-2507-q4
+    family: qwen
+    displayName: "Qwen3 235B A22B Thinking 2507"
+    parameters: 235B-A22B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-235B-A22B-Thinking-2507-GGUF/resolve/main/Q4_K_M/Qwen3-235B-A22B-Thinking-2507-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-25"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 172, diskGB: 143, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: qwen3-235b-a22b-q4
+    family: qwen
+    displayName: "Qwen3 235B A22B"
+    parameters: 235B-A22B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-235B-A22B-GGUF/resolve/main/Q4_K_M/Qwen3-235B-A22B-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2025-04-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 40960
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 172, diskGB: 143, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: qwen3.5-397b-a17b-q4
+    family: qwen
+    displayName: "Qwen3.5 397B A17B"
+    parameters: 397B-A17B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3.5-397B-A17B-GGUF/resolve/main/Q4_K_M/Qwen3.5-397B-A17B-Q4_K_M-00001-of-00006.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-16"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 294, diskGB: 245, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: qwen3-coder-480b-a35b-instruct-q4
+    family: qwen
+    displayName: "Qwen3 Coder 480B A35B Instruct"
+    parameters: 480B-A35B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Qwen3-Coder-480B-A35B-Instruct-GGUF/resolve/main/Q4_K_M/Qwen3-Coder-480B-A35B-Instruct-Q4_K_M-00001-of-00006.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-22"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 350, diskGB: 291, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # gemma
+  - id: gemma-3-270m-it-q4
+    family: gemma
+    displayName: "gemma 3 270m it"
+    parameters: 270M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3-270m-it-GGUF/resolve/main/gemma-3-270m-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-08-14"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: functiongemma-270m-it-q4
+    family: gemma
+    displayName: "functiongemma 270m it"
+    parameters: 270M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/functiongemma-270m-it-GGUF/resolve/main/functiongemma-270m-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-12-18"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: gemma-3-1b-it-q4
+    family: gemma
+    displayName: "gemma 3 1b it"
+    parameters: 1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-03-12"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: gemma-2-it-q4
+    family: gemma
+    displayName: "gemma 2 it"
+    parameters: 2B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-2-it-GGUF/resolve/main/gemma-2-2b-it.q4_k_m.gguf
+    license: gemma
+    releaseDate: "2024-07-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: gemma-3-4b-it-q4
+    family: gemma
+    displayName: "gemma 3 4b it"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-03-12"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: gemma-3n-e2b-it-q4
+    family: gemma
+    displayName: "gemma 3n E2B it"
+    parameters: E2B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-06-26"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 0, diskGB: 4, gpus: 0 }
+    resources: { cpu: "2", memory: "6Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: gemma-4-e2b-it-q4
+    family: gemma
+    displayName: "gemma 4 E2B it"
+    parameters: E2B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2026-04-01"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 4, gpus: 0 }
+    resources: { cpu: "2", memory: "6Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: gemma-3n-e4b-it-q4
+    family: gemma
+    displayName: "gemma 3n E4B it"
+    parameters: E4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3n-E4B-it-GGUF/resolve/main/gemma-3n-E4B-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-06-26"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 32768
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: gemma-4-e4b-it-q4
+    family: gemma
+    displayName: "gemma 4 E4B it"
+    parameters: E4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2026-04-01"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: gemma-4-12b-it-q4
+    family: gemma
+    displayName: "gemma 4 12b it"
+    parameters: 12B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2026-05-29"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 10, diskGB: 8, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: gemma-3-12b-it-q4
+    family: gemma
+    displayName: "gemma 3 12b it"
+    parameters: 12B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3-12b-it-GGUF/resolve/main/gemma-3-12b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-03-12"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 10, diskGB: 8, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: medgemma-27b-text-it-q4
+    family: gemma
+    displayName: "medgemma 27b text it"
+    parameters: 27B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/medgemma-27b-text-it-GGUF/resolve/main/medgemma-27b-text-it-Q4_K_M.gguf
+    license: hai-def
+    releaseDate: "2025-05-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 21, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: gemma-3-27b-it-q4
+    family: gemma
+    displayName: "gemma 3 27b it"
+    parameters: 27B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-3-27b-it-GGUF/resolve/main/gemma-3-27b-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2025-03-12"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 21, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: gemma-4-26b-a4b-it-q4
+    family: gemma
+    displayName: "gemma 4 26B A4B it"
+    parameters: 26B-A4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2026-04-01"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 22, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: gemma-4-31b-it-q4
+    family: gemma
+    displayName: "gemma 4 31B it"
+    parameters: 31B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf
+    license: gemma
+    releaseDate: "2026-04-01"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 23, diskGB: 19, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  # llama
+  - id: llama-3.2-1b-instruct-q4-unsloth
+    family: llama
+    displayName: "Llama 3.2 1B Instruct"
+    parameters: 1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+    license: llama3.2
+    releaseDate: "2024-09-25"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: llama-3.2-3b-instruct-q4-unsloth
+    family: llama
+    displayName: "Llama 3.2 3B Instruct"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+    license: llama3.2
+    releaseDate: "2024-09-25"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: llama-3.1-8b-instruct-q4-unsloth
+    family: llama
+    displayName: "Llama 3.1 8B Instruct"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-3.1-8B-Instruct-GGUF/resolve/main/Llama-3.1-8B-Instruct-Q4_K_M.gguf
+    license: llama3.1
+    releaseDate: "2024-07-23"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: llama-3.3-70b-instruct-q4
+    family: llama
+    displayName: "Llama 3.3 70B Instruct"
+    parameters: 70B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-3.3-70B-Instruct-GGUF/resolve/main/Llama-3.3-70B-Instruct-Q4_K_M.gguf
+    license: llama3.3
+    releaseDate: "2024-12-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 53, diskGB: 44, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  - id: llama-4-scout-17b-16e-instruct-q4
+    family: llama
+    displayName: "Llama 4 Scout 17B 16E Instruct"
+    parameters: 109B-A17B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF/resolve/main/Q4_K_M/Llama-4-Scout-17B-16E-Instruct-Q4_K_M-00001-of-00002.gguf
+    license: llama4
+    releaseDate: "2025-04-05"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 10485760
+    requirements: { vramGB: 80, diskGB: 66, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: llama-4-maverick-17b-128e-instruct-q4
+    family: llama
+    displayName: "Llama 4 Maverick 17B 128E Instruct"
+    parameters: 400B-A17B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Llama-4-Maverick-17B-128E-Instruct-GGUF/resolve/main/Q4_K_M/Llama-4-Maverick-17B-128E-Instruct-Q4_K_M-00001-of-00005.gguf
+    license: llama4
+    releaseDate: "2025-04-05"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 1048576
+    requirements: { vramGB: 293, diskGB: 244, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  # deepseek
+  - id: deepseek-r1-distill-qwen-1.5b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Qwen 1.5B"
+    parameters: 1.5B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: deepseek-r1-distill-qwen-7b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Qwen 7B"
+    parameters: 7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: deepseek-r1-distill-llama-8b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Llama 8B"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Llama-8B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-8B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: deepseek-r1-0528-qwen3-8b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 0528 Qwen3 8B"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF/resolve/main/DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-05-28"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: deepseek-r1-distill-qwen-14b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Qwen 14B"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-14B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: deepseek-r1-distill-qwen-32b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Qwen 32B"
+    parameters: 32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-32B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 25, diskGB: 21, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: deepseek-r1-distill-llama-70b-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Distill Llama 70B"
+    parameters: 70B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Distill-Llama-70B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 53, diskGB: 44, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  - id: deepseek-v4-flash-q4
+    family: deepseek
+    displayName: "DeepSeek V4 Flash"
+    parameters: ~258B
+    format: gguf
+    quantization: UD-Q4_K_XL
+    source: https://huggingface.co/unsloth/DeepSeek-V4-Flash-GGUF/resolve/main/UD-Q4_K_XL/DeepSeek-V4-Flash-UD-Q4_K_XL-00001-of-00005.gguf
+    license: mit
+    releaseDate: "2026-07-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 188, diskGB: 156, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: deepseek-v3-q4
+    family: deepseek
+    displayName: "DeepSeek V3"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-V3-GGUF/resolve/main/DeepSeek-V3-Q4_K_M/DeepSeek-V3-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2024-12-26"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    requirements: { vramGB: 487, diskGB: 405, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-r1-zero-q4
+    family: deepseek
+    displayName: "DeepSeek R1 Zero"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-Zero-GGUF/resolve/main/DeepSeek-R1-Zero-Q4_K_M/DeepSeek-R1-Zero-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 163840
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 487, diskGB: 405, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-r1-q4
+    family: deepseek
+    displayName: "DeepSeek R1"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-GGUF/resolve/main/DeepSeek-R1-Q4_K_M/DeepSeek-R1-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 163840
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 487, diskGB: 405, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-v3-0324-q4
+    family: deepseek
+    displayName: "DeepSeek V3 0324"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-V3-0324-GGUF/resolve/main/Q4_K_M/DeepSeek-V3-0324-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-03-24"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    requirements: { vramGB: 487, diskGB: 405, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-r1-0528-q4
+    family: deepseek
+    displayName: "DeepSeek R1 0528"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-R1-0528-GGUF/resolve/main/Q4_K_M/DeepSeek-R1-0528-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-05-28"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 163840
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 487, diskGB: 406, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-v3.1-terminus-q4
+    family: deepseek
+    displayName: "DeepSeek V3.1 Terminus"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-V3.1-Terminus-GGUF/resolve/main/Q4_K_M/DeepSeek-V3.1-Terminus-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-09-22"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 488, diskGB: 406, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-v3.1-q4
+    family: deepseek
+    displayName: "DeepSeek V3.1"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-V3.1-GGUF/resolve/main/Q4_K_M/DeepSeek-V3.1-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2025-08-21"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 488, diskGB: 406, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: deepseek-v3.2-q4
+    family: deepseek
+    displayName: "DeepSeek V3.2"
+    parameters: 671B-A37B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/DeepSeek-V3.2-GGUF/resolve/main/Q4_K_M/DeepSeek-V3.2-Q4_K_M-00001-of-00009.gguf
+    license: mit
+    releaseDate: "2026-01-29"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 163840
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 488, diskGB: 406, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # mistral
+  - id: ministral-3-3b-reasoning-2512-q4
+    family: mistral
+    displayName: "Ministral 3 3B Reasoning 2512"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-3B-Reasoning-2512-GGUF/resolve/main/Ministral-3-3B-Reasoning-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: ministral-3-3b-instruct-2512-q4
+    family: mistral
+    displayName: "Ministral 3 3B Instruct 2512"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: ministral-3-8b-reasoning-2512-q4
+    family: mistral
+    displayName: "Ministral 3 8B Reasoning 2512"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-8B-Reasoning-2512-GGUF/resolve/main/Ministral-3-8B-Reasoning-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: ministral-3-8b-instruct-2512-q4
+    family: mistral
+    displayName: "Ministral 3 8B Instruct 2512"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-8B-Instruct-2512-GGUF/resolve/main/Ministral-3-8B-Instruct-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: mistral-nemo-instruct-2407-q4
+    family: mistral
+    displayName: "Mistral Nemo Instruct 2407"
+    parameters: 12B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Nemo-Instruct-2407-GGUF/resolve/main/Mistral-Nemo-Instruct-2407.Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-07-18"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 10, diskGB: 8, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: ministral-3-14b-reasoning-2512-q4
+    family: mistral
+    displayName: "Ministral 3 14B Reasoning 2512"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-14B-Reasoning-2512-GGUF/resolve/main/Ministral-3-14B-Reasoning-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 11, diskGB: 9, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: ministral-3-14b-instruct-2512-q4
+    family: mistral
+    displayName: "Ministral 3 14B Instruct 2512"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Ministral-3-14B-Instruct-2512-GGUF/resolve/main/Ministral-3-14B-Instruct-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 11, diskGB: 9, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: mistral-small-24b-instruct-2501-q4
+    family: mistral
+    displayName: "Mistral Small 24B Instruct 2501"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Small-24B-Instruct-2501-GGUF/resolve/main/Mistral-Small-24B-Instruct-2501-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-01-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: magistral-small-2506-q4
+    family: mistral
+    displayName: "Magistral Small 2506"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Magistral-Small-2506-GGUF/resolve/main/Magistral-Small-2506-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-06-10"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: mistral-small-3.1-24b-instruct-2503-q4
+    family: mistral
+    displayName: "Mistral Small 3.1 24B Instruct 2503"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Small-3.1-24B-Instruct-2503-GGUF/resolve/main/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-03-17"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: magistral-small-2507-q4
+    family: mistral
+    displayName: "Magistral Small 2507"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Magistral-Small-2507-GGUF/resolve/main/Magistral-Small-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-25"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: magistral-small-2509-q4
+    family: mistral
+    displayName: "Magistral Small 2509"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Magistral-Small-2509-GGUF/resolve/main/Magistral-Small-2509-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-09-18"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: devstral-small-2505-q4
+    family: mistral
+    displayName: "Devstral Small 2505"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Devstral-Small-2505-GGUF/resolve/main/Devstral-Small-2505-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-05-21"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: devstral-small-2507-q4
+    family: mistral
+    displayName: "Devstral Small 2507"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Devstral-Small-2507-GGUF/resolve/main/Devstral-Small-2507-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-10"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: mistral-small-3.2-24b-instruct-2506-q4
+    family: mistral
+    displayName: "Mistral Small 3.2 24B Instruct 2506"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF/resolve/main/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-06-20"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: devstral-small-2-24b-instruct-2512-q4
+    family: mistral
+    displayName: "Devstral Small 2 24B Instruct 2512"
+    parameters: 24B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Devstral-Small-2-24B-Instruct-2512-GGUF/resolve/main/Devstral-Small-2-24B-Instruct-2512-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-10"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 19, diskGB: 15, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: mistral-small-4-119b-2603-q4
+    family: mistral
+    displayName: "Mistral Small 4 119B 2603"
+    parameters: 119B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Small-4-119B-2603-GGUF/resolve/main/UD-Q4_K_M/Mistral-Small-4-119B-2603-UD-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2026-03-17"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 90, diskGB: 75, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: mistral-medium-3.5-128b-q4
+    family: mistral
+    displayName: "Mistral Medium 3.5 128B"
+    parameters: 128B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Medium-3.5-128B-GGUF/resolve/main/Q4_K_M/Mistral-Medium-3.5-128B-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-27"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 91, diskGB: 76, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: devstral-2-123b-instruct-2512-q4
+    family: mistral
+    displayName: "Devstral 2 123B Instruct 2512"
+    parameters: 123B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Devstral-2-123B-Instruct-2512-GGUF/resolve/main/Q4_K_M/Devstral-2-123B-Instruct-2512-Q4_K_M-00001-of-00002.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-10"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 91, diskGB: 76, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: mistral-large-3-675b-instruct-2512-q4
+    family: mistral
+    displayName: "Mistral Large 3 675B Instruct 2512"
+    parameters: 675B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF/resolve/main/Q4_K_M/Mistral-Large-3-675B-Instruct-2512-Q4_K_M-00001-of-00009.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-07"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 490, diskGB: 408, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # glm
+  - id: glm-4.7-flash-q4
+    family: glm
+    displayName: "GLM 4.7 Flash"
+    parameters: ~31B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF/resolve/main/GLM-4.7-Flash-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2026-01-20"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 23, diskGB: 19, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: glm-4.5-air-q4
+    family: glm
+    displayName: "GLM 4.5 Air"
+    parameters: 106B-A12B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-4.5-Air-GGUF/resolve/main/Q4_K_M/GLM-4.5-Air-Q4_K_M-00001-of-00002.gguf
+    license: mit
+    releaseDate: "2025-07-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 89, diskGB: 74, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: glm-4.6-q4
+    family: glm
+    displayName: "GLM 4.6"
+    parameters: 355B-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-4.6-GGUF/resolve/main/Q4_K_M/GLM-4.6-Q4_K_M-00001-of-00005.gguf
+    license: mit
+    releaseDate: "2025-09-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 260, diskGB: 217, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: glm-4.7-q4
+    family: glm
+    displayName: "GLM 4.7"
+    parameters: 355B-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-4.7-GGUF/resolve/main/Q4_K_M/GLM-4.7-Q4_K_M-00001-of-00005.gguf
+    license: mit
+    releaseDate: "2025-12-22"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 261, diskGB: 217, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: glm-4.5-q4
+    family: glm
+    displayName: "GLM 4.5"
+    parameters: 355B-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-4.5-GGUF/resolve/main/Q4_K_M/GLM-4.5-Q4_K_M-00001-of-00005.gguf
+    license: mit
+    releaseDate: "2025-07-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 261, diskGB: 217, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: glm-5-q4
+    family: glm
+    displayName: "GLM 5"
+    parameters: ~760B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-5-GGUF/resolve/main/Q4_K_M/GLM-5-Q4_K_M-00001-of-00011.gguf
+    license: mit
+    releaseDate: "2026-02-10"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 549, diskGB: 457, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: glm-5.1-q4
+    family: glm
+    displayName: "GLM 5.1"
+    parameters: ~774B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-5.1-GGUF/resolve/main/UD-Q4_K_M/GLM-5.1-UD-Q4_K_M-00001-of-00011.gguf
+    license: mit
+    releaseDate: "2026-04-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 559, diskGB: 466, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  - id: glm-5.2-q4
+    family: glm
+    displayName: "GLM 5.2"
+    parameters: ~776B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/GLM-5.2-GGUF/resolve/main/UD-Q4_K_M/GLM-5.2-UD-Q4_K_M-00001-of-00011.gguf
+    license: mit
+    releaseDate: "2026-06-17"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 202752
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 560, diskGB: 467, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # kimi
+  - id: kimi-k2.7-code-q4
+    family: kimi
+    displayName: "Kimi K2.7 Code"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: UD-Q4_K_XL
+    source: https://huggingface.co/unsloth/Kimi-K2.7-Code-GGUF/resolve/main/UD-Q4_K_XL/Kimi-K2.7-Code-UD-Q4_K_XL-00001-of-00014.gguf
+    license: modified-mit
+    releaseDate: "2026-06-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 702, diskGB: 585, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  - id: kimi-k2.6-q4
+    family: kimi
+    displayName: "Kimi K2.6"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: UD-Q4_K_XL
+    source: https://huggingface.co/unsloth/Kimi-K2.6-GGUF/resolve/main/UD-Q4_K_XL/Kimi-K2.6-UD-Q4_K_XL-00001-of-00014.gguf
+    license: modified-mit
+    releaseDate: "2026-04-20"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 702, diskGB: 585, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  - id: kimi-k2-instruct-q4
+    family: kimi
+    displayName: "Kimi K2 Instruct"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Kimi-K2-Instruct-GGUF/resolve/main/Q4_K_M/Kimi-K2-Instruct-Q4_K_M-00001-of-00013.gguf
+    license: modified-mit
+    releaseDate: "2025-07-11"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 746, diskGB: 622, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  - id: kimi-k2-instruct-0905-q4
+    family: kimi
+    displayName: "Kimi K2 Instruct 0905"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Kimi-K2-Instruct-0905-GGUF/resolve/main/Q4_K_M/Kimi-K2-Instruct-0905-Q4_K_M-00001-of-00013.gguf
+    license: modified-mit
+    releaseDate: "2025-09-05"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    requirements: { vramGB: 747, diskGB: 622, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  - id: kimi-k2-thinking-q4
+    family: kimi
+    displayName: "Kimi K2 Thinking"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Kimi-K2-Thinking-GGUF/resolve/main/Q4_K_M/Kimi-K2-Thinking-Q4_K_M-00001-of-00013.gguf
+    license: modified-mit
+    releaseDate: "2025-11-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 747, diskGB: 622, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  - id: kimi-k2.5-q4
+    family: kimi
+    displayName: "Kimi K2.5"
+    parameters: 1T-A32B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Kimi-K2.5-GGUF/resolve/main/Q4_K_M/Kimi-K2.5-Q4_K_M-00001-of-00013.gguf
+    license: modified-mit
+    releaseDate: "2026-01-27"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 747, diskGB: 622, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 15 }
+
+  # nemotron
+  - id: nvidia-nemotron-3-nano-4b-q4
+    family: nemotron
+    displayName: "NVIDIA Nemotron 3 Nano 4B"
+    parameters: 4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/main/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf
+    license: nvidia-open-model
+    releaseDate: "2026-03-16"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 4, gpus: 0 }
+    resources: { cpu: "2", memory: "6Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: nemotron-3-nano-30b-a3b-q4
+    family: nemotron
+    displayName: "Nemotron 3 Nano 30B A3B"
+    parameters: 30B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Nemotron-3-Nano-30B-A3B-GGUF/resolve/main/Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf
+    license: nvidia-open-model
+    releaseDate: "2025-12-15"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 31, diskGB: 26, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  - id: nvidia-nemotron-3-super-120b-a12b-q4
+    family: nemotron
+    displayName: "NVIDIA Nemotron 3 Super 120B A12B"
+    parameters: 120B-A12B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF/resolve/main/UD-Q4_K_M/NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf
+    license: nvidia-open-model
+    releaseDate: "2026-03-06"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 101, diskGB: 84, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  - id: nvidia-nemotron-3-ultra-550b-a55b-q4
+    family: nemotron
+    displayName: "NVIDIA Nemotron 3 Ultra 550B A55B"
+    parameters: 550B-A55B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Ultra-550B-A55B-GGUF/resolve/main/UD-Q4_K_M/NVIDIA-Nemotron-3-Ultra-550B-A55B-UD-Q4_K_M-00001-of-00009.gguf
+    license: nvidia-open-model
+    releaseDate: "2026-06-04"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 433, diskGB: 360, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # phi
+  - id: phi-4-mini-instruct-q4
+    family: phi
+    displayName: "Phi 4 mini instruct"
+    parameters: 3.8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-02-27"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: phi-4-mini-reasoning-q4
+    family: phi
+    displayName: "Phi 4 mini reasoning"
+    parameters: 3.8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Phi-4-mini-reasoning-GGUF/resolve/main/Phi-4-mini-reasoning-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: phi-4-q4
+    family: phi
+    displayName: "phi 4"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/phi-4-GGUF/resolve/main/phi-4-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2024-12-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 16384
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: phi-4-reasoning-plus-q4
+    family: phi
+    displayName: "Phi 4 reasoning plus"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Phi-4-reasoning-plus-GGUF/resolve/main/Phi-4-reasoning-plus-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: phi-4-reasoning-q4
+    family: phi
+    displayName: "Phi 4 reasoning"
+    parameters: 14B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Phi-4-reasoning-GGUF/resolve/main/phi-4-reasoning-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 32768
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 12, diskGB: 10, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  # minimax
+  - id: minimax-m2-q4
+    family: minimax
+    displayName: "MiniMax M2"
+    parameters: 230B-A10B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/MiniMax-M2-GGUF/resolve/main/Q4_K_M/MiniMax-M2-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-27"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 196608
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 168, diskGB: 139, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: minimax-m2.5-q4
+    family: minimax
+    displayName: "MiniMax M2.5"
+    parameters: 230B-A10B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/MiniMax-M2.5-GGUF/resolve/main/Q4_K_M/MiniMax-M2.5-Q4_K_M-00001-of-00004.gguf
+    license: apache-2.0
+    releaseDate: "2026-02-14"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 196608
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 168, diskGB: 139, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: minimax-m2.1-q4
+    family: minimax
+    displayName: "MiniMax M2.1"
+    parameters: 230B-A10B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/MiniMax-M2.1-GGUF/resolve/main/Q4_K_M/MiniMax-M2.1-Q4_K_M-00001-of-00003.gguf
+    license: apache-2.0
+    releaseDate: "2025-12-26"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 196608
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 168, diskGB: 139, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: minimax-m2.7-q4
+    family: minimax
+    displayName: "MiniMax M2.7"
+    parameters: 230B-A10B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/MiniMax-M2.7-GGUF/resolve/main/UD-Q4_K_M/MiniMax-M2.7-UD-Q4_K_M-00001-of-00004.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-11"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 196608
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 170, diskGB: 141, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  - id: minimax-m3-q4
+    family: minimax
+    displayName: "MiniMax M3"
+    parameters: ~440B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/MiniMax-M3-GGUF/resolve/main/UD-Q4_K_M/MiniMax-M3-UD-Q4_K_M-00001-of-00007.gguf
+    license: apache-2.0
+    releaseDate: "2026-06-12"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 196608
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 318, diskGB: 265, gpus: 8 }
+    resources: { cpu: "189", memory: "1998Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-h100-80gb, instanceType: h100-80gb-x8, gpusPerReplica: 8, vramGB: 640, estTokensPerSec: 25 }
+
+  # gpt-oss
+  - id: gpt-oss-20b-q4
+    family: gpt-oss
+    displayName: "gpt oss 20b"
+    parameters: 20B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-08-05"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 15, diskGB: 13, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: gpt-oss-120b-q4
+    family: gpt-oss
+    displayName: "gpt oss 120b"
+    parameters: 120B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/gpt-oss-120b-GGUF/resolve/main/Q4_K_M/gpt-oss-120b-Q4_K_M-00001-of-00002.gguf
+    license: apache-2.0
+    releaseDate: "2025-08-05"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 77, diskGB: 64, gpus: 2 }
+    resources: { cpu: "23", memory: "280Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x2, gpusPerReplica: 2, vramGB: 160, estTokensPerSec: 40 }
+
+  # grok
+  - id: grok-2-q4
+    family: grok
+    displayName: "grok 2"
+    parameters: 270B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/grok-2-GGUF/resolve/main/Q4_K_M/grok-2-Q4_K_M-00001-of-00004.gguf
+    license: grok-2-community
+    releaseDate: "2025-08-23"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    requirements: { vramGB: 198, diskGB: 165, gpus: 4 }
+    resources: { cpu: "47", memory: "560Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x4, gpusPerReplica: 4, vramGB: 320, estTokensPerSec: 30 }
+
+  # ernie
+  - id: ernie-4.5-21b-a3b-thinking-q4
+    family: ernie
+    displayName: "ERNIE 4.5 21B A3B Thinking"
+    parameters: 21B-A3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/ERNIE-4.5-21B-A3B-Thinking-GGUF/resolve/main/ERNIE-4.5-21B-A3B-Thinking-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-09-10"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 131072
+    reasoning:
+      efforts: { low: 2048, medium: 8192, high: 32768 }
+    requirements: { vramGB: 17, diskGB: 14, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  # hunyuan
+  - id: hunyuan-a13b-instruct-q4
+    family: hunyuan
+    displayName: "Hunyuan A13B Instruct"
+    parameters: 80B-A13B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Hunyuan-A13B-Instruct-GGUF/resolve/main/Hunyuan-A13B-Instruct-Q4_K_M.gguf
+    license: tencent-hunyuan-community
+    releaseDate: "2025-06-27"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 262144
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 60, diskGB: 50, gpus: 1 }
+    resources: { cpu: "11", memory: "140Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 55 }
+
+  # granite
+  - id: granite-4.0-h-350m-q4
+    family: granite
+    displayName: "granite 4.0 h 350m"
+    parameters: 350M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-h-350m-GGUF/resolve/main/granite-4.0-h-350m-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: granite-4.0-350m-q4
+    family: granite
+    displayName: "granite 4.0 350m"
+    parameters: 350M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-350m-GGUF/resolve/main/granite-4.0-350m-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: granite-4.0-h-1b-q4
+    family: granite
+    displayName: "granite 4.0 h 1b"
+    parameters: 1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-h-1b-GGUF/resolve/main/granite-4.0-h-1b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
+
+  - id: granite-4.0-1b-q4
+    family: granite
+    displayName: "granite 4.0 1b"
+    parameters: 1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-1b-GGUF/resolve/main/granite-4.0-1b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-28"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: granite-4.0-h-micro-q4
+    family: granite
+    displayName: "granite 4.0 h micro"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-h-micro-GGUF/resolve/main/granite-4.0-h-micro-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: granite-4.1-3b-q4
+    family: granite
+    displayName: "granite 4.1 3b"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.1-3b-GGUF/resolve/main/granite-4.1-3b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: granite-4.0-micro-q4
+    family: granite
+    displayName: "granite 4.0 micro"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-micro-GGUF/resolve/main/granite-4.0-micro-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
+
+  - id: granite-4.0-h-tiny-q4
+    family: granite
+    displayName: "granite 4.0 h tiny"
+    parameters: 7B-A1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 7, diskGB: 5, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: granite-4.1-8b-q4
+    family: granite
+    displayName: "granite 4.1 8b"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.1-8b-GGUF/resolve/main/granite-4.1-8b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: granite-4.1-30b-q4
+    family: granite
+    displayName: "granite 4.1 30b"
+    parameters: 30B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.1-30b-GGUF/resolve/main/granite-4.1-30b-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2026-04-30"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 22, diskGB: 18, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 60 }
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 100 }
+
+  - id: granite-4.0-h-small-q4
+    family: granite
+    displayName: "granite 4.0 h small"
+    parameters: 32B-A9B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/granite-4.0-h-small-GGUF/resolve/main/granite-4.0-h-small-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-10-02"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 25, diskGB: 21, gpus: 1 }
+    resources: { cpu: "3", memory: "26Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-l40s, instanceType: g6e.xlarge, gpusPerReplica: 1, vramGB: 48, estTokensPerSec: 60 }
+      - { gpuType: nvidia-a100-80gb, instanceType: a100-80gb-x1, gpusPerReplica: 1, vramGB: 80, estTokensPerSec: 85 }
+
+  # smollm
+  - id: smollm2-135m-instruct-q4
+    family: smollm
+    displayName: "SmolLM2 135M Instruct"
+    parameters: 135M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-10-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: smollm2-360m-instruct-q4
+    family: smollm
+    displayName: "SmolLM2 360M Instruct"
+    parameters: 360M
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-10-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
+    resources: { cpu: "2", memory: "3Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 22 }
+
+  - id: smollm2-1.7b-instruct-q4-unsloth
+    family: smollm
+    displayName: "SmolLM2 1.7B Instruct"
+    parameters: 1.7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2024-10-31"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 8192
+    requirements: { vramGB: 0, diskGB: 2, gpus: 0 }
+    resources: { cpu: "2", memory: "4Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+
+  - id: smollm3-3b-q4
+    family: smollm
+    displayName: "SmolLM3 3B"
+    parameters: 3B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-07-08"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 65536
+    reasoning:
+      efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
+    requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
+    resources: { cpu: "2", memory: "5Gi" }
+    capacityProfiles:
+      - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
+

@@ -1,0 +1,6 @@
+# Session pods run here even when the CP runs out-of-cluster (dev), so the
+# namespace renders regardless of controlplane.enabled.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.agents.namespace }}

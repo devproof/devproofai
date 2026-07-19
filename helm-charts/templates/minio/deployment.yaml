@@ -1,0 +1,52 @@
+{{- if .Values.minio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  {{- with .Values.minio.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.minio.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      app: {{ include "devproof.app" "minio" }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "devproof.app" "minio" }}
+        {{- with .Values.minio.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.minio.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "devproof.podScheduling" .Values.minio | nindent 6 }}
+      {{- include "devproof.pullSecrets" $ | nindent 6 }}
+      containers:
+        - name: minio
+          image: {{ include "devproof.image" .Values.minio.image }}
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          args: ["server", "/data", "--console-address", ":9001"]
+          envFrom:
+            - secretRef: { name: {{ .Values.minio.auth.existingSecret | default "devproof-minio" }} }
+          ports: [{ containerPort: 9000 }, { containerPort: 9001 }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: 9000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: devproof-minio-data }
+{{- end }}

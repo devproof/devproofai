@@ -1,0 +1,80 @@
+# Manual release (no automatic image publishing — user decision 2026-07-19).
+# Trigger by hand with an explicit version: the workflow creates + pushes the
+# annotated git tag on the dispatched commit, then builds all five images FROM
+# that tag (scripts/version.sh must resolve to it) for linux/amd64 +
+# linux/arm64 via the SAME docker-bake.hcl as scripts/build.sh — keep it that
+# way. The platform override lives here (not in the bake file) so local builds
+# stay native single-arch.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. v0.2.0) — becomes the git tag + image tag"
+        required: true
+
+permissions:
+  contents: write   # pushes the release tag
+  packages: write
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180   # arm64 builds run under QEMU emulation
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }   # version.sh needs tags + history
+      - name: validate version
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] \
+            || { echo "version must look like v0.2.0 (got: $VERSION)"; exit 1; }
+      - name: create + push tag
+        # Idempotent re-run: a tag already on HEAD is fine (a prior run tagged
+        # but failed to build); the same tag elsewhere is a hard error.
+        run: |
+          if existing=$(git rev-parse -q --verify "refs/tags/$VERSION^{commit}"); then
+            [ "$existing" = "$(git rev-parse HEAD)" ] \
+              || { echo "tag $VERSION already exists on $existing"; exit 1; }
+            echo "tag $VERSION already on HEAD — skipping tag creation"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$VERSION" -m "release $VERSION"
+            git push origin "refs/tags/$VERSION"
+          fi
+      - name: version from tag
+        # Build version comes from git (single source of truth) and must equal
+        # the input — catches dispatching a commit already tagged differently.
+        run: |
+          v="$(scripts/version.sh)"
+          [ "$v" = "$VERSION" ] \
+            || { echo "scripts/version.sh resolved $v, expected $VERSION"; exit 1; }
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: bake (multi-arch build + push)
+        env:
+          REVISION: ${{ github.sha }}
+          REGISTRY: ghcr.io/devproof
+        # No floating `latest` tag — images are referenced by pinned version
+        # tags only (user decision 2026-07-19).
+        run: docker buildx bake --set "*.platform=linux/amd64,linux/arm64" --push
+      - uses: azure/setup-helm@v4
+      # dependency build resolves Chart.lock but still needs the repo
+      # definition (fresh runners have no helm repos).
+      - run: helm repo add llmkube https://defilantech.github.io/LLMKube
+      - run: helm dependency build helm-charts
+      - name: package + push chart (ghcr.io/devproof/devproofai-helm)
+        # The OCI repo name comes from the chart name in Chart.yaml
+        # (devproofai-helm); the version overrides Chart.yaml's at package time.
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package helm-charts --version "$VERSION" --app-version "$VERSION" -d /tmp
+          helm push "/tmp/devproofai-helm-$VERSION.tgz" oci://ghcr.io/devproof

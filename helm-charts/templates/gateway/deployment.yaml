@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: {{ include "devproof.gatewayNamespace" $ }}
+  {{- with .Values.gateway.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "devproof.app" "gateway" }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "devproof.app" "gateway" }}
+        {{- with .Values.gateway.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Roll pods when the chart-shipped callbacks change — and only then.
+        checksum/callbacks: {{ $.Files.Get "files/custom_callbacks.py" | sha256sum }}
+        {{- with .Values.gateway.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "devproof.podScheduling" .Values.gateway | nindent 6 }}
+      {{- include "devproof.pullSecrets" $ | nindent 6 }}
+      containers:
+        - name: litellm
+          image: {{ include "devproof.image" .Values.gateway.image }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          # asyncpg is baked into the image (gateway/Dockerfile) — no runtime
+          # pip install, no PyPI egress at boot.
+          command: ["litellm", "--config", "/etc/litellm/config.yaml", "--port", "4000"]
+          env:
+            # NOT named DATABASE_URL: that exact name flips LiteLLM into its own
+            # Prisma-managed DB mode which drops tables it doesn't own.
+            - name: DEVPROOF_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: devproof-db, key: database-url }
+            - name: DEVPROOF_INTERNAL_KEY
+              valueFrom:
+                secretKeyRef: { name: gateway-auth, key: internal-key, optional: true }
+            # LiteLLM's own admin credential (see gateway.auth in values.yaml).
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.gateway.auth.existingSecret | default "gateway-master-key" }}, key: master-key }
+          envFrom:
+            - secretRef: { name: gateway-provider-keys, optional: true }
+          ports: [{ containerPort: 4000 }]
+          volumeMounts: [{ name: config, mountPath: /etc/litellm }]
+          readinessProbe:
+            httpGet: { path: /health/readiness, port: 4000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap: { name: litellm-config }

@@ -1,0 +1,298 @@
+# Every component carries the same contract: image, resources, nodeSelector,
+# tolerations; user-facing endpoints (console, gateway, controlplane) add a
+# service block (type/port/nodePort/annotations/loadBalancerClass).
+
+crds:
+  install: true
+
+# Auth for the container registry hosting the platform images — the default
+# refs point at the private ghcr.io/devproof/devproofai-* packages, but any
+# registry works (customers may re-host the images in their own CR and adjust
+# the image repositories). UNCONFIGURED (no token, no existingSecret) means a
+# public registry: no pull secrets are rendered or attached anywhere.
+# When configured, a kubernetes.io/dockerconfigjson Secret is created in BOTH
+# the release namespace and the agents namespace (session-runner Jobs and
+# egress proxies pull there), and attached to every chart workload and the
+# session/egress pods (via the CP). Engine pods are NOT covered — they run
+# public upstream images only (LLMkube flaps ISVC imagePullSecrets; see the
+# llmkube block note). ALSO set llmkube.imagePullSecrets: [{name: <secretName>}] —
+# subchart values cannot be derived at template time.
+registryAuth:
+  registry: ghcr.io
+  username: devproof
+  # Registry credential (for GHCR: a PAT with read:packages). Pass at install
+  # time (--set registryAuth.token=…), never commit it.
+  token: ""
+  # Name of the chart-managed Secret created from the token.
+  secretName: devproof-registry
+  # Bring-your-own dockerconfigjson Secret; must exist in the release AND
+  # agents namespaces. Takes precedence over token/secretName.
+  existingSecret: ""
+
+# Passthrough to the pinned LLMkube dependency (see README audit table).
+# The values below make the inherited chart follow the same contract as our
+# own components (resources/nodeSelector/tolerations + disk class/size);
+# defaults mirror upstream 0.9.7 so overriding one key never surprises another.
+llmkube:
+  enabled: true
+  imagePullSecrets: []   # set [{name: <registryAuth secret>}] when registryAuth is enabled
+  controllerManager:
+    # Devproof mirror of ghcr.io/defilantech/llmkube-controller. The ENGINE
+    # pods deliberately use only PUBLIC upstream images (llama.cpp engine +
+    # curlimages/curl init): LLMkube 0.9.7 flaps ISVC spec.image AND
+    # spec.imagePullSecrets out of the engine template (observed live
+    # 2026-07-19, both), so engine pods can neither run private mirrors nor
+    # reliably carry pull secrets. Mirrors devproofai-llama.cpp and
+    # devproofai-curl exist as copies only until upstream is deterministic.
+    image:
+      repository: ghcr.io/devproof/devproofai-llmkube-controller
+      tag: "0.9.7"
+    initContainer:
+      repository: docker.io/curlimages/curl
+      tag: "8.18.0"
+    resources:
+      requests:
+        cpu: 10m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+    nodeSelector: {}
+    tolerations: []
+  modelCache:
+    mode: perService
+    # One knob for ALL model caches (upstream limitation: not per-model).
+    # perService: one RWO WaitForFirstConsumer PVC per model ("<name>-model-cache").
+    size: 100Gi
+    storageClass: ""   # "" = cluster default
+
+namespaces:
+  # "" = the release namespace. Override only for a split layout.
+  gateway: ""
+  serving: ""
+
+agents:
+  namespace: devproof-agents
+  # Session-pod image; passed to the control plane as DEVPROOF_RUNNER_IMAGE
+  # (the CP creates the Jobs, so there is no pullPolicy knob here).
+  runnerImage:
+    repository: ghcr.io/devproof/devproofai-session-runner
+    tag: dev51
+  # Per-environment egress proxy (squid) — a standalone pod the CP creates per
+  # environment, so it carries the full component contract. Passed to the CP as
+  # DEVPROOF_EGRESS_PROXY_IMAGE + DEVPROOF_EGRESS_PROXY_POD (JSON).
+  egressProxy:
+    image:
+      repository: ghcr.io/devproof/devproofai-squid
+      tag: "6.13"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    nodeSelector: {}
+    tolerations: []
+
+postgres:
+  enabled: true
+  image:
+    repository: ghcr.io/devproof/devproofai-postgres
+    tag: 17.10-alpine
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  persistence:
+    storageClass: ""
+    size: 2Gi
+  auth:
+    # Empty passwords = generated once at install (stable across upgrades).
+    adminPassword: ""
+    appPassword: ""
+    # Bring-your-own secret with keys admin-password / app-password
+    # (must exist before install — read via lookup).
+    existingSecret: ""
+
+# Used when postgres.enabled=false.
+externalDatabase:
+  host: ""
+  port: 5432
+  database: devproof
+  user: devproof
+  password: ""
+  existingSecret: ""   # key: password (must exist before install)
+  sslMode: ""          # e.g. require
+
+minio:
+  enabled: true
+  image:
+    repository: ghcr.io/devproof/devproofai-minio
+    tag: RELEASE.2025-09-07T16-13-09Z
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  persistence:
+    storageClass: ""
+    size: 10Gi
+  auth:
+    rootUser: devproof
+    rootPassword: ""     # "" = generated
+    existingSecret: ""   # keys MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+
+# Used when minio.enabled=false.
+s3:
+  endpoint: ""           # "" = real AWS S3
+  bucket: devproof-files
+  region: ""
+  auth:
+    mode: key            # key | podIdentity
+    existingSecret: ""   # mode=key: keys access-key-id / secret-access-key
+
+gateway:
+  image:
+    # LiteLLM (digest-pinned main-stable) + asyncpg baked in — gateway/Dockerfile.
+    repository: ghcr.io/devproof/devproofai-gateway
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  # LiteLLM master key (LITELLM_MASTER_KEY): LiteLLM's own admin credential —
+  # without it the proxy boots with a CRITICAL warning and treats everyone as
+  # a no-admin internal user. Devproof API traffic stays governed by
+  # custom_auth (console dpk_ keys + the CP internal key); the master key is
+  # for LiteLLM admin surfaces only.
+  auth:
+    # Fixed key value; "" = generated once (24 alphanumerics) and kept stable
+    # across upgrades via the devproof.stableSecretValue lookup.
+    masterKey: ""
+    # Name of a pre-created Secret with key `master-key`; takes precedence
+    # over masterKey and skips the generated Secret entirely.
+    existingSecret: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  service:
+    type: ClusterIP
+    port: 4000
+    nodePort: null
+    annotations: {}
+    loadBalancerClass: null
+  hpa:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+
+controlplane:
+  enabled: true
+  image:
+    repository: ghcr.io/devproof/devproofai-control-plane
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  service:
+    type: ClusterIP
+    port: 7080
+    nodePort: null
+    annotations: {}
+    loadBalancerClass: null
+  serviceAccount:
+    annotations: {}      # e.g. eks.amazonaws.com/role-arn for IRSA
+
+console:
+  enabled: true
+  image:
+    repository: ghcr.io/devproof/devproofai-console
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  service:
+    type: ClusterIP
+    port: 7090
+    nodePort: null
+    annotations: {}
+    loadBalancerClass: null
+
+operator:
+  enabled: true
+  image:
+    repository: ghcr.io/devproof/devproofai-operator
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  labels: {}         # extra labels on the workload object and its pods
+  annotations: {}    # extra annotations on the workload object
+  podAnnotations: {} # extra annotations on the pods (e.g. prometheus.io/*)
+  # "" = derived: http://controlplane.<release-ns>.svc.cluster.local:7080 when
+  # controlplane.enabled; set explicitly when the CP runs out-of-cluster.
+  controlPlaneUrl: ""
+  # llama.cpp engine image the operator stamps into each InferenceService.
+  # Devproof Docker Hub mirrors exist (devproof/devproofai-llama.cpp:
+  # server-b10068 cpu, server-cuda-b9935 gpu) but stamping ships DISABLED
+  # (empty repository = ISVC image unset, LLMkube upstream default): LLMkube
+  # 0.9.7 does not reliably honor ISVC spec.image for llamacpp — its builder
+  # intermittently rebuilds the engine template from the accelerator default,
+  # flapping the template and rolling engine pods forever (observed live
+  # 2026-07-19). Re-enable by setting the repositories once upstream honors
+  # spec.image deterministically. cpu vs gpu is chosen per deployment from its
+  # catalog resources (gpu key); engine pod resources/placement come from the
+  # catalog entry and the ModelPool, not from here.
+  engineImage:
+    cpu:
+      repository: ""
+      tag: server-b10068
+    gpu:
+      repository: ""
+      tag: server-cuda-b9935

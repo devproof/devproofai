@@ -1,0 +1,25 @@
+{
+  "name": "@devproof/console",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 7090",
+    "build": "next build",
+    "start": "next start -p 7090"
+  },
+  "dependencies": {
+    "next": "^15.4.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "typescript": "^5.8.0"
+  },
+  "overrides": {
+    "postcss": ">=8.5.10"
+  }
+}

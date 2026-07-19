@@ -1,0 +1,43 @@
+{{- /* pg credentials and the composed database-url live in ONE template so a
+       first install mints the app password exactly once. */}}
+{{- $appPw := "" }}
+{{- if .Values.postgres.enabled }}
+  {{- if .Values.postgres.auth.existingSecret }}
+    {{- $s := lookup "v1" "Secret" .Release.Namespace .Values.postgres.auth.existingSecret }}
+    {{- if $s }}{{- $appPw = index $s.data "app-password" }}{{- end }}
+  {{- else }}
+    {{- $appPw = include "devproof.stableSecretValue" (dict "root" $ "secret" "devproof-pg" "key" "app-password" "value" .Values.postgres.auth.appPassword) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: devproof-pg
+type: Opaque
+data:
+  admin-password: {{ include "devproof.stableSecretValue" (dict "root" $ "secret" "devproof-pg" "key" "admin-password" "value" .Values.postgres.auth.adminPassword) }}
+  app-password: {{ $appPw }}
+  {{- end }}
+{{- else if .Values.externalDatabase.existingSecret }}
+  {{- $s := lookup "v1" "Secret" .Release.Namespace .Values.externalDatabase.existingSecret }}
+  {{- if $s }}{{- $appPw = index $s.data "password" }}{{- end }}
+{{- else }}
+  {{- $appPw = .Values.externalDatabase.password | b64enc }}
+{{- end }}
+{{- $host := ternary (printf "postgres.%s.svc.cluster.local" .Release.Namespace) .Values.externalDatabase.host .Values.postgres.enabled }}
+{{- $port := ternary 5432 (.Values.externalDatabase.port | int) .Values.postgres.enabled }}
+{{- $db := ternary "devproof" .Values.externalDatabase.database .Values.postgres.enabled }}
+{{- $user := ternary "devproof" .Values.externalDatabase.user .Values.postgres.enabled }}
+{{- $url := printf "postgresql://%s:%s@%s:%d/%s" $user ($appPw | b64dec) $host $port $db }}
+{{- if and (not .Values.postgres.enabled) .Values.externalDatabase.sslMode }}
+{{- $url = printf "%s?sslmode=%s" $url .Values.externalDatabase.sslMode }}
+{{- end }}
+{{- range $ns := (list $.Release.Namespace (include "devproof.gatewayNamespace" $) | uniq) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: devproof-db
+  namespace: {{ $ns }}
+type: Opaque
+data:
+  database-url: {{ $url | b64enc }}
+{{- end }}

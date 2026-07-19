@@ -1,0 +1,27 @@
+# Minimal Prometheus for Devproof serving metrics (chart: prometheus-community/prometheus).
+# Install: helm install prometheus prometheus-community/prometheus -n devproof-observability --create-namespace -f this-file
+alertmanager: { enabled: false }
+prometheus-pushgateway: { enabled: false }
+prometheus-node-exporter: { enabled: false }
+kube-state-metrics: { enabled: false }
+server:
+  retention: 2d
+  persistentVolume: { enabled: false }
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  global:
+    scrape_interval: 15s
+extraScrapeConfigs: |
+  - job_name: devproof-serving-pods
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces: { names: [devproof-serving] }
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        regex: "8080"
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod

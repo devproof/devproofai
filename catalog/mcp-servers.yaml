@@ -1,0 +1,30 @@
+# Bundled MCP server registry (spec 2026-07-13). Sovereignty stance: shipped
+# with the platform like models.yaml — no live registry dependency. Remote
+# streamable-HTTP servers only. auth: what the server expects (oauth servers
+# accept a pre-obtained token via the MCP OAuth credential type).
+servers:
+  - name: context7
+    label: Context7
+    url: https://mcp.context7.com/mcp
+    description: Up-to-date library and framework documentation
+    auth: bearer
+  - name: github
+    label: GitHub
+    url: https://api.githubcopilot.com/mcp/
+    description: GitHub repositories, issues, and pull requests
+    auth: oauth
+  - name: deepwiki
+    label: DeepWiki
+    url: https://mcp.deepwiki.com/mcp
+    description: Ask questions about public GitHub repositories
+    auth: none
+  - name: sentry
+    label: Sentry
+    url: https://mcp.sentry.dev/mcp
+    description: Errors, issues, and projects from Sentry
+    auth: oauth
+  - name: linear
+    label: Linear
+    url: https://mcp.linear.app/mcp
+    description: Linear issues and projects
+    auth: oauth

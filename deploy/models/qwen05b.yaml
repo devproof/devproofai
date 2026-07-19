@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata: { name: devproof-serving }
+---
+apiVersion: inference.llmkube.dev/v1alpha1
+kind: Model
+metadata: { name: qwen05b, namespace: devproof-serving }
+spec:
+  source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+  format: gguf
+---
+apiVersion: inference.llmkube.dev/v1alpha1
+kind: InferenceService
+metadata: { name: qwen05b, namespace: devproof-serving }
+spec:
+  modelRef: qwen05b
+  replicas: 1
+  resources: { cpu: "2", memory: "2Gi" }

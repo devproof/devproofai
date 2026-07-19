@@ -1,0 +1,3 @@
+{{- if .Values.console.enabled }}
+{{ include "devproof.service" (dict "root" $ "name" "console" "component" "console" "svc" .Values.console.service "targetPort" 7090) }}
+{{- end }}

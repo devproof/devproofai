@@ -1,0 +1,20 @@
+[project]
+name = "devproofai-client"
+dynamic = ["version"]
+description = "Python client for the Devproof AI platform (managed agents on self-hosted models)"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27"]
+
+[build-system]
+# setuptools>=77 for the PEP 639 SPDX license expression above
+requires = ["setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["devproof*"]
+
+# Version from git tags (vX.Y.Z), shared with the image builds — the client
+# lives in a subdir of the repo, hence root = "..".
+[tool.setuptools_scm]
+root = ".."
