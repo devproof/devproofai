@@ -72,6 +72,12 @@ jobs:
       # definition (fresh runners have no helm repos).
       - run: helm repo add llmkube https://defilantech.github.io/LLMKube
       - run: helm dependency build helm-charts
+      # The upstream llmkube schema rejects the subchart-injected keys
+      # 'enabled'/'global' (root additionalProperties:false) — re-package the
+      # vendored tgz with them allowed so installs of the RELEASED chart don't
+      # need --skip-schema-validation. Must run after dependency build (which
+      # restores the pristine upstream tgz).
+      - run: scripts/patch-llmkube-schema.sh
       - name: package + push chart (ghcr.io/devproof/devproofai-helm)
         # The OCI repo name comes from the chart name in Chart.yaml
         # (devproofai-helm); the version overrides Chart.yaml's at package time.

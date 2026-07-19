@@ -24,10 +24,12 @@ $Mirrors = @(
 
 # The source annotation makes GHCR list the package under the devproofai
 # repo (the upstream images' own source labels point at THEIR repos).
-# Caveat: minio/minio ships a Docker-format manifest list, which cannot
-# carry OCI annotations — buildx silently drops it there. Connect that
-# package to the repo once by hand (package settings -> Connect repository);
-# the connection persists across future pushes.
+# Caveat: minio/minio and ubuntu/squid ship Docker-format manifest lists,
+# which cannot carry OCI annotations — buildx silently drops the flag there
+# (it re-pushes the upstream list unchanged). Their packages were connected
+# to the repo once (2026-07-20, via a hand-PUT annotated OCI index); the
+# package-repo connection persists across future pushes, so re-runs of this
+# script don't need to repeat it.
 $SourceAnnotation = "index:org.opencontainers.image.source=https://github.com/devproof/devproofai"
 
 foreach ($m in $Mirrors) {

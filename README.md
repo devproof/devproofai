@@ -98,16 +98,16 @@ Prerequisites: a Kubernetes cluster with a default StorageClass,
 
 ```bash
 # One umbrella chart deploys everything: control plane, console, gateway,
-# operator, Postgres, MinIO (--skip-schema-validation works around an
-# upstream schema gap in the bundled LLMkube dependency).
-# Released chart, straight from GHCR:
+# operator, Postgres, MinIO:
 helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.0 \
-  -n devproof --create-namespace --skip-schema-validation
+  -n devproof --create-namespace
 
-# …or from a source checkout:
-git clone https://github.com/devproof/devproofai.git && cd devproofai
-helm dependency build helm-charts
-helm install devproof helm-charts -n devproof --create-namespace --skip-schema-validation
+# Don't want to serve local models? Install without the LLMkube serving
+# engine — agents, routing, API keys and metering then run purely against
+# external APIs (OpenAI, Anthropic, OpenRouter, custom), added later in the
+# console under Deployments -> Add endpoint:
+helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.0 \
+  -n devproof --create-namespace --set llmkube.enabled=false
 
 # Wait for the pods, then expose the console and the model gateway:
 kubectl -n devproof get pods
@@ -119,7 +119,9 @@ Open **http://localhost:7090** and:
 
 1. **Pools** → create a pool (GPU type `cpu` works on a laptop cluster), then
    **Model catalog** → pick a small model (e.g. *Qwen 2.5 0.5B Instruct*) →
-   **Deploy** into it. Watch it download and turn Ready.
+   **Deploy** into it. Watch it download and turn Ready. (Installed without
+   LLMkube? Skip this — add your provider under **Deployments** → *Add
+   endpoint* instead.)
 2. **Routings** → create a routing that routes to your deployment (agents and
    API keys always talk to routings, not raw deployments).
 3. **API keys** → create a key, then point any OpenAI/Anthropic client at it:

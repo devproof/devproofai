@@ -182,7 +182,24 @@ if (process.env.DEVPROOF_S3_ENDPOINT || process.env.DEVPROOF_S3_BUCKET) {
   };
   const { S3Client, CreateBucketCommand } = await import("@aws-sdk/client-s3");
   const c = new S3Client(s3ClientOptions(cfg));
-  try { await c.send(new CreateBucketCommand({ Bucket: bucket })); } catch { /* exists */ }
+  // Ensure the bucket exists before serving. Retry with backoff: on a fresh
+  // install the CP races the bundled MinIO's first boot (PVC provisioning),
+  // and external S3 can blip too. Only "already exists" is success; anything
+  // else after the deadline crashes the boot so k8s restarts the pod — a
+  // silently missing bucket fails every file op later ("The specified bucket
+  // does not exist").
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await c.send(new CreateBucketCommand({ Bucket: bucket }));
+      break;
+    } catch (e) {
+      const name = (e as Error)?.name ?? "";
+      if (name === "BucketAlreadyOwnedByYou" || name === "BucketAlreadyExists") break;
+      if (attempt >= 30) throw e;
+      console.log(`bucket ${bucket} not ready (${name || e}), retry ${attempt}/30`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
   files = s3FileStore(cfg);
   console.log(`file store: S3 ${cfg.endpoint ?? "aws"}/${bucket}`);
 }
