@@ -183,6 +183,11 @@ Building from source: [`BUILD.md`](BUILD.md). Concept and decision history:
 
 ## Screenshots
 
+The dashboard — models serving, agent sessions and live token usage at a
+glance:
+
+![Dashboard](docs/images/dashboard.png)
+
 An agent session — the live transcript of every message, thought and tool
 call, with token totals and the resolved model:
 
