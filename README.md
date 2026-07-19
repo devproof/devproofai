@@ -143,6 +143,28 @@ your setup), pass a token: `--set registryAuth.token=<PAT with read:packages>`.
 More install options (external Postgres/S3, exposure, scheduling):
 [`helm-charts/README.md`](helm-charts/README.md).
 
+## Python client
+
+Everything above is scriptable with the Python client
+([`python-client/`](python-client/README.md), Apache-2.0,
+`pip install devproofai-client`):
+
+```python
+from devproof import Devproof
+
+client = Devproof()  # DEVPROOF_BASE_URL (default http://localhost:14000), DEVPROOF_API_KEY
+
+env = client.environments.create(name="my-env")
+agent = client.agents.create(name="my-agent", routing="my-routing", environment_id=env["id"])
+session = client.sessions.create(agent=agent["id"], prompt="Hello!")
+for event in client.sessions.events.stream(session["id"]):
+    print(event)
+```
+
+Runnable examples for every feature area — files, skills, memory, wikis,
+vaults, environments, agents, sessions, tool use, MCP — live in
+[`python-client/examples/`](python-client/examples/README.md).
+
 ## Architecture
 
 | Path | What |
