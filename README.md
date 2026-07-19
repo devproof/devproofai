@@ -152,7 +152,7 @@ Everything above is scriptable with the Python client
 ```python
 from devproof import Devproof
 
-client = Devproof()  # DEVPROOF_BASE_URL (default http://localhost:14000), DEVPROOF_API_KEY
+client = Devproof(base_url="https://gateway.example.com", api_key="dpk_...")
 
 env = client.environments.create(name="my-env")
 agent = client.agents.create(name="my-agent", routing="my-routing", environment_id=env["id"])
