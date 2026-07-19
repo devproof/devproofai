@@ -101,7 +101,7 @@ Prerequisites: a Kubernetes cluster with a default StorageClass,
 # operator, Postgres, MinIO (--skip-schema-validation works around an
 # upstream schema gap in the bundled LLMkube dependency).
 # Released chart, straight from GHCR:
-helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.2 \
+helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.0 \
   -n devproof --create-namespace --skip-schema-validation
 
 # …or from a source checkout:
