@@ -79,7 +79,7 @@ test("gateway renders deployment, configmap with both keys, service, hpa", () =>
   assert.ok(out.includes("name: litellm-config"));
   assert.ok(out.includes("custom_callbacks.py: |"));
   assert.ok(out.includes("config.yaml: |"));
-  assert.ok(out.includes("image: ghcr.io/devproof/devproofai-gateway:v0.1.2"));
+  assert.ok(out.includes("image: ghcr.io/devproof/devproofai-gateway:v0.1.0"));
   assert.ok(out.includes("checksum/callbacks:"));
   assert.ok(/kind: HorizontalPodAutoscaler[\s\S]*minReplicas: 2/.test(out));
 });
