@@ -167,6 +167,58 @@ vaults, environments, agents, sessions, tool use, MCP — live in
 
 ## Architecture
 
+**Agent execution flow** — every turn runs in an isolated, network-locked
+session pod; all model traffic resolves through the gateway's routing rules:
+
+```mermaid
+flowchart LR
+    CP["Control plane<br/>(session orchestrator)"] -- "launches turn Job" --> RUNNER
+
+    subgraph POD["Session pod — no direct network access"]
+        RUNNER["Agent loop + tools<br/>(session-runner)"]
+        PROXY["Egress proxy<br/>(per-environment allowlist)"]
+        RUNNER -- "tool traffic" --> PROXY
+    end
+
+    PROXY -- "allowlisted hosts only" --> NET["Internet / MCP servers"]
+    RUNNER -- "LLM calls" --> GW["Gateway router<br/>(routing rules)"]
+    GW -- "route" --> LOCAL["Local model<br/>(llama.cpp deployment)"]
+    GW -- "route" --> EXT["External API<br/>(OpenAI · Anthropic · …)"]
+```
+
+**Component dependencies** — the managed-agents plane and the serving plane,
+meeting at the gateway:
+
+```mermaid
+flowchart TD
+    CONSOLE["Console<br/>(Next.js)"] --> CP
+    CLIENTS["API clients<br/>(Claude Code, SDKs, curl)"] --> GW
+
+    subgraph AGENTS["Managed agents"]
+        CP["Control plane<br/>(API + orchestrator)"]
+        PG[("Postgres")]
+        S3[("MinIO / S3")]
+        POD["Session pods<br/>(session-runner)"]
+        CP --> PG
+        CP --> S3
+        CP -- "turn Jobs" --> POD
+    end
+
+    subgraph SERVING["Serving"]
+        GW["Gateway<br/>(LiteLLM: auth, routing, metering)"]
+        OP["Operator<br/>(ModelPool / ModelDeployment CRDs)"]
+        ENG["Engine pods<br/>(llama.cpp)"]
+        EXT["External endpoints<br/>(OpenAI · Anthropic · …)"]
+        OP --> ENG
+        GW --> ENG
+        GW --> EXT
+    end
+
+    POD -- "LLM calls" --> GW
+    CP -- "deployments + config sync" --> OP
+    GW -. "auth + usage metering" .-> PG
+```
+
 | Path | What |
 |---|---|
 | `operator/` | Go operator — `ModelPool`/`ModelDeployment` CRDs, autoscaler, scale-to-zero |
