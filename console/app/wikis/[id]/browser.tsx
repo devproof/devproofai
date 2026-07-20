@@ -6,6 +6,7 @@ import { wsHeader } from "../../lib/client";
 import { Modal, Field, ConfirmDialog } from "../../lib/modal";
 import { Markdown } from "../../lib/markdown";
 import { buildTree, FileTree, splitFrontmatter, resolveRelativeHref, type TreeNode } from "../../lib/file-tree";
+import { DateTime } from "../../lib/datetime";
 
 type Entry = { path: string; file_id: string; updated_at: string };
 
@@ -58,7 +59,7 @@ export function WikiBrowser({ wikiId, entries }:
               <>
                 <div className="formrow" style={{ justifyContent: "space-between" }}>
                   <p className="sub" style={{ margin: 0 }}>/{loaded} · updated{" "}
-                    {new Date(entries.find((e) => e.path === loaded)!.updated_at).toLocaleString()}</p>
+                    <DateTime iso={entries.find((e) => e.path === loaded)!.updated_at} /></p>
                   <span className="formrow" style={{ margin: 0, gap: 8 }}>
                     {isMd(loaded) && (
                       <button className="ghost" onClick={() => setRaw((r) => !r)}>{raw ? "Rendered" : "Raw"}</button>

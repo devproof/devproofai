@@ -3,6 +3,7 @@
 // this component is mounted (the SSE connection maintains the gateway-side
 // subscription). Nothing is stored; refresh = empty window.
 import { useEffect, useRef, useState } from "react";
+import { presetLocale } from "../../lib/datetime";
 
 interface TraceEvent {
   id: string; kind: "request" | "response" | "error"; deployment: string; ts: string;
@@ -190,7 +191,7 @@ export function TraceTab({ name, keys, agents, basePath = "/v1/deployments" }:
                 {e.target}{typeof e.rule === "number" && e.rule >= 0 ? ` · rule ${e.rule + 1}` : e.rule === -1 ? " · default" : ""}
               </button>
             )}
-            <span className="muted" style={{ marginLeft: "auto", fontSize: 11 }}>{new Date(e.ts).toLocaleTimeString()}</span>
+            <span className="muted" style={{ marginLeft: "auto", fontSize: 11 }}>{new Date(e.ts).toLocaleTimeString(presetLocale())}</span>
           </div>
           {e.kind === "request" && (e.tool_names?.length ?? 0) > 0 && toolsOpen.has(e.seq!) && (() => {
             const { builtin, mcp } = groupTools(e.tool_names!);

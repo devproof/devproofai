@@ -3,6 +3,7 @@ import { CreateWiki } from "./create";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
 import { DeleteButton } from "../lib/delete";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function WikisPage({ searchParams }: { searchParams: Promis
               <td>{w.name}</td>
               <td>{w.entry_count ?? 0}</td>
               <td>{fmtBytes(Number(w.total_bytes ?? 0))}</td>
-              <td>{new Date(w.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={w.updated_at} /></td>
               <td><DeleteButton path={`/v1/wikis/${w.id}`} confirmText={`Delete wiki "${w.name}" and all its pages?`} /></td>
             </tr>
           ))}

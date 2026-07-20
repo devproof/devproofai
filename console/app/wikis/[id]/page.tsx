@@ -4,6 +4,7 @@ import { EditWikiButton } from "../edit";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
 import { DeleteButton } from "../../lib/delete";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function WikiDetail({ params }: { params: Promise<{ id: str
   return (
     <>
       <div className="crumbs"><Link href="/wikis">LLM wikis</Link> / <CopyId id={id} />
-        {wiki && <> · last modified {new Date(wiki.updated_at).toLocaleString()}</>}</div>
+        {wiki && <> · last modified <DateTime iso={wiki.updated_at} /></>}</div>
       <div className="pagehead">
         <h1>{wiki?.name ?? "Wiki"}</h1>
         {wiki && (

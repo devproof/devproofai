@@ -7,6 +7,7 @@ import { wsHeader } from "../lib/client";
 import { ConfirmDialog } from "../lib/modal";
 import { DownloadButton, RowActions } from "../lib/delete";
 import { Pager } from "../lib/pager";
+import { DateTime } from "../lib/datetime";
 
 interface FileRow {
   id: string; name: string; size: number; kind: string;
@@ -68,7 +69,7 @@ export function FilesTable({ files, total }:
               <td>{f.session_count > 0
                 ? <Link href={`/sessions?file=${encodeURIComponent(f.id)}`}>{f.session_count}</Link>
                 : f.session_count}</td>
-              <td>{new Date(f.created_at).toLocaleString()}</td>
+              <td><DateTime iso={f.created_at} /></td>
               <td><RowActions><DownloadButton path={`/v1/files/${f.id}/content`} name={f.name} /></RowActions></td>
             </tr>
           ))}

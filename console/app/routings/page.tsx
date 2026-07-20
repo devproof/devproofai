@@ -3,6 +3,7 @@ import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
 import { DeleteButton } from "../lib/delete";
 import { CreateRoutingButton } from "./routing-modal";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function RoutingsPage({ searchParams }: { searchParams: Pro
               <td><Link href={`/routings/${encodeURIComponent(r.name)}`}>{r.name}</Link></td>
               <td>{r.ruleCount}</td>
               <td>{r.terminal?.action === "route" ? <>route to <code>{r.terminal.target}</code></> : "reject (403)"}</td>
-              <td>{r.updated_at ? new Date(r.updated_at).toLocaleString() : "—"}</td>
+              <td>{r.updated_at ? <DateTime iso={r.updated_at} /> : "—"}</td>
               <td><DeleteButton path={`/v1/routings/${encodeURIComponent(r.name)}`}
                     confirmText={`Delete routing "${r.name}"? Clients calling it will be rejected (400/403). Blocked while any agent references it.`} /></td>
             </tr>

@@ -1,6 +1,7 @@
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
 import { DeleteButton } from "../lib/delete";
+import { DateTime } from "../lib/datetime";
 
 interface CacheEntry {
   name: string; source: string; size: string | null; phase: string; created: string;
@@ -33,7 +34,7 @@ export default async function CachePage({ searchParams }: { searchParams: Promis
               <td>{c.size ?? "—"}</td>
               <td><span className={`phase ${c.phase}`}>{c.phase}</span></td>
               <td><code style={{ wordBreak: "break-all" }}>{c.source}</code></td>
-              <td>{new Date(c.created).toLocaleString()}</td>
+              <td><DateTime iso={c.created} /></td>
               <td><DeleteButton path={`/v1/cache/${c.name}`} confirmText={`Evict cached model "${c.name}"? It will re-download on next deploy.`} label="Evict" /></td>
             </tr>
           ))}

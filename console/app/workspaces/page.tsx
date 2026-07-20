@@ -1,5 +1,6 @@
 import { wsGet } from "../lib/api";
 import { WorkspaceRowActions, WorkspaceIdButton, NewWorkspaceButton, DeletionCell } from "./actions";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function WorkspacesPage() {
                   <span className={`phase ${w.status === "active" ? "Ready" : "bad"}`}>{w.status}</span>
                 )}
               </td>
-              <td>{new Date(w.created_at).toLocaleString()}</td>
+              <td><DateTime iso={w.created_at} /></td>
               <td><WorkspaceRowActions ws={w} /></td>
             </tr>
           ))}

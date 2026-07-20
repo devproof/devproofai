@@ -4,6 +4,7 @@ import { EditMemoryStoreButton } from "../edit";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
 import { DeleteButton } from "../../lib/delete";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function MemoryStoreDetail({ params }: { params: Promise<{ 
   return (
     <>
       <div className="crumbs"><Link href="/memory-stores">Memory stores</Link> / <CopyId id={id} />
-        {store && <> · last modified {new Date(store.updated_at).toLocaleString()}</>}</div>
+        {store && <> · last modified <DateTime iso={store.updated_at} /></>}</div>
       <div className="pagehead">
         <h1>{store?.name ?? "Memory store"}</h1>
         {store && (

@@ -3,6 +3,7 @@ import { CreateVault } from "./create";
 import { DeleteButton } from "../lib/delete";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function VaultsPage({ searchParams }: { searchParams: Promi
               <td><Link href={`/vaults/${v.id}`}><code>{v.id}</code></Link></td>
               <td>{v.name}</td>
               <td><span className="phase Ready">Active</span></td>
-              <td>{new Date(v.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={v.updated_at} /></td>
               <td><DeleteButton path={`/v1/vaults/${v.id}`} confirmText={`Delete vault "${v.name}"?`} /></td>
             </tr>
           ))}

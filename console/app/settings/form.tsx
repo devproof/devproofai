@@ -9,6 +9,7 @@ import { submitJson } from "../lib/modal";
 import { apiPost } from "../lib/client";
 import { Icon } from "../lib/icons";
 import { CURRENCY_LABELS, type CostSettings } from "../lib/currency";
+import { DateTime } from "../lib/datetime";
 
 function Row({ label, hint, checked, onChange }: {
   label: string; hint: string; checked: boolean; onChange: (v: boolean) => void;
@@ -294,7 +295,7 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
               {maintDirty
                 ? <span style={{ color: "var(--bad)" }}>⚠ Unsaved changes — press “Save settings” first.</span>
                 : (runMsg ?? (summary
-                  ? `Last run ${new Date(summary.at).toLocaleString()} — ${Object.values(summary.sections).some((x) => x.error) ? "completed with errors" : "completed successfully"}`
+                  ? <>Last run <DateTime iso={summary.at} /> — {Object.values(summary.sections).some((x) => x.error) ? "completed with errors" : "completed successfully"}</>
                   : "never run"))}
             </span>
           </label>

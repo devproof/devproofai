@@ -3,6 +3,7 @@ import { wsGet } from "../../lib/api";
 import { DeleteButton } from "../../lib/delete";
 import { AddCredentialButton, RotateCredentialName } from "./credentials";
 import { CopyId } from "../../lib/copy-id";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function VaultDetail({ params }: { params: Promise<{ id: st
   if (!vault) return <p className="sub">Vault not found.</p>;
   return (
     <>
-      <div className="crumbs"><Link href="/vaults">Vaults</Link> / <CopyId id={vault.id} /> · last modified {new Date(vault.updated_at).toLocaleString()}</div>
+      <div className="crumbs"><Link href="/vaults">Vaults</Link> / <CopyId id={vault.id} /> · last modified <DateTime iso={vault.updated_at} /></div>
       <div className="pagehead">
         <h1>{vault.name}</h1>
         <div style={{ display: "flex", gap: 10 }}>
@@ -32,7 +33,7 @@ export default async function VaultDetail({ params }: { params: Promise<{ id: st
               <td><RotateCredentialName vaultId={vault.id} cred={c} /></td>
               <td>{c.type === "mcp_oauth" ? "MCP OAuth" : c.type === "bearer_token" ? "Bearer token" : "Env var"}</td>
               <td>{c.mcp_server_url ? <span className="muted">{c.mcp_server_url}</span> : "—"}</td>
-              <td>{new Date(c.created_at).toLocaleString()}</td>
+              <td><DateTime iso={c.created_at} /></td>
               <td><DeleteButton path={`/v1/vaults/${vault.id}/credentials/${encodeURIComponent(c.name)}`}
                     confirmText={`Remove credential "${c.name}"?`} label="Remove" /></td>
             </tr>

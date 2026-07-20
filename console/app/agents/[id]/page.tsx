@@ -7,6 +7,7 @@ import { CreateSession } from "../../sessions/create";
 import { wsGet, offsetOf } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
 import { DeleteButton } from "../../lib/delete";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   }));
   return (
     <>
-      <div className="crumbs"><Link href="/agents">Agents</Link> / <CopyId id={agent.id} /> · last modified {new Date(agent.updated_at).toLocaleString()}</div>
+      <div className="crumbs"><Link href="/agents">Agents</Link> / <CopyId id={agent.id} /> · last modified <DateTime iso={agent.updated_at} /></div>
       <div className="pagehead">
         <h1>{agent.name} <span className={`phase ${agent.status === "disabled" ? "bad" : "Ready"}`} style={{ verticalAlign: "middle" }}>
           {agent.status === "disabled" ? "Disabled" : "Active"}</span></h1>

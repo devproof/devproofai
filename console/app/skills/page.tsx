@@ -3,6 +3,7 @@ import { CreateSkill } from "./create";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
 import { DeleteButton } from "../lib/delete";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function SkillsPage({ searchParams }: { searchParams: Promi
               <td>{s.name}</td>
               <td><span className="phase ver">v{s.version ?? 1}</span></td>
               <td>{Array.isArray(s.files) ? s.files.length : 1}</td>
-              <td>{new Date(s.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={s.updated_at} /></td>
               <td><DeleteButton path={`/v1/skills/${s.id}`} confirmText={`Delete skill "${s.name}"?`} /></td>
             </tr>
           ))}

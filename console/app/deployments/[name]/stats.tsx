@@ -7,6 +7,7 @@ import { wsHeader } from "../../lib/client";
 import { UsageBars } from "../../lib/usage-bars";
 import { TOKEN_SERIES, costSeries, seriesFrom } from "../../usage/shared";
 import { fmtCost, currencySymbol } from "../../lib/currency";
+import { presetLocale } from "../../lib/datetime";
 
 // Rule-index -> readable label for the "requests by rule" chart (fix wave H).
 const ruleLabel = (k: string) =>
@@ -31,9 +32,9 @@ const fmt = (n: number) =>
 // day boundary (>=24h — bare times would repeat within the span).
 export const bucketTimeLabel = (t: number, bucketSeconds: number) => {
   const d = new Date(t * 1000);
-  if (bucketSeconds < 60) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  if (bucketSeconds >= 1440) return d.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (bucketSeconds < 60) return d.toLocaleTimeString(presetLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  if (bucketSeconds >= 1440) return d.toLocaleString(presetLocale(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(presetLocale(), { hour: "2-digit", minute: "2-digit" });
 };
 
 interface Bucket { t: number; tokens_in: number; tokens_out: number; requests: number; real_cost: number; billed_cost: number }

@@ -3,6 +3,7 @@ import { CreateStore } from "./create";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
 import { DeleteButton } from "../lib/delete";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function MemoryStoresPage({ searchParams }: { searchParams:
               <td><Link href={`/memory-stores/${s.id}`}><code>{s.id}</code></Link></td>
               <td>{s.name}</td>
               <td>{s.entry_count ?? 0}</td>
-              <td>{new Date(s.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={s.updated_at} /></td>
               <td><DeleteButton path={`/v1/memory-stores/${s.id}`} confirmText={`Delete memory store "${s.name}" and all its entries?`} /></td>
             </tr>
           ))}

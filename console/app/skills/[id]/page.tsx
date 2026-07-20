@@ -3,6 +3,7 @@ import { wsGet } from "../../lib/api";
 import { DeleteButton } from "../../lib/delete";
 import { SkillFiles, UpdateSkillButton } from "./viewer";
 import { CopyId } from "../../lib/copy-id";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function SkillDetail({ params }: { params: Promise<{ id: st
   const files: { path: string; fileId: string }[] = Array.isArray(skill.files) ? skill.files : [];
   return (
     <>
-      <div className="crumbs"><Link href="/skills">Skills</Link> / <CopyId id={skill.id} /> · last modified {new Date(skill.updated_at).toLocaleString()}</div>
+      <div className="crumbs"><Link href="/skills">Skills</Link> / <CopyId id={skill.id} /> · last modified <DateTime iso={skill.updated_at} /></div>
       <div className="pagehead">
         <h1>{skill.name}</h1>
         <div className="formrow" style={{ margin: 0 }}>

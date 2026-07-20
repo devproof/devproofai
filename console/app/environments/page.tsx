@@ -2,6 +2,7 @@ import { CreateEnvironment, EditEnvironmentName } from "./create";
 import { DeleteButton } from "../lib/delete";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function EnvironmentsPage({ searchParams }: { searchParams:
               <td><span className={`phase ${e.allow_package_managers ? "Ready" : "bad"}`}>
                 {e.allow_package_managers ? "Enabled" : "Disabled"}</span></td>
               <td><code>{e.pod?.requests?.cpu ?? "250m"} / {e.pod?.requests?.memory ?? "512Mi"}</code></td>
-              <td>{new Date(e.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={e.updated_at} /></td>
               <td><DeleteButton path={`/v1/environments/${e.id}`} confirmText={`Delete environment "${e.name}"?`} /></td>
             </tr>
           ))}

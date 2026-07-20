@@ -3,6 +3,7 @@ import { CreateAgentButton } from "./agent-form";
 import { DeleteButton } from "../lib/delete";
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
+import { DateTime } from "../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
               <td><code>{a.routing}</code></td>
               <td><span className="phase ver">v{a.version}</span></td>
               <td><span className={`phase ${a.status === "disabled" ? "bad" : "Ready"}`}>{a.status === "disabled" ? "Disabled" : "Active"}</span></td>
-              <td>{new Date(a.updated_at).toLocaleString()}</td>
+              <td><DateTime iso={a.updated_at} /></td>
               <td><DeleteButton path={`/v1/agents/${a.id}`} confirmText={`Delete agent "${a.name}" and all its sessions?`} /></td>
             </tr>
           ))}

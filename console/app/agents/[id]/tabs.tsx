@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Pager } from "../../lib/pager";
+import { DateTime } from "../../lib/datetime";
 
 const fmt = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
@@ -120,7 +121,7 @@ export function AgentTabs({ agent, observability, sessions, sessionCount = 0, in
                 <td><span className={`phase ${["completed", "idle"].includes(s.status) ? "Ready" : s.status === "failed" ? "Failed" : "Deploying"}`}>{s.status}</span></td>
                 <td><span className="phase ver">v{s.agent_version}</span></td>
                 <td>{fmt(Number(s.tokens_in))} / {fmt(Number(s.tokens_out))}</td>
-                <td>{new Date(s.updated_at).toLocaleString()}</td>
+                <td><DateTime iso={s.updated_at} /></td>
               </tr>
             ))}
             {sessions.length === 0 && <tr><td colSpan={6} className="empty">No sessions for this agent.</td></tr>}

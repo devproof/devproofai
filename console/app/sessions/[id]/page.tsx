@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SessionView } from "./trace";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
     : null;
   return (
     <>
-      <div className="crumbs"><Link href="/sessions">Sessions</Link> / <CopyId id={session.id} /> · last activity {new Date(session.updated_at).toLocaleString()}
+      <div className="crumbs"><Link href="/sessions">Sessions</Link> / <CopyId id={session.id} /> · last activity <DateTime iso={session.updated_at} />
       {session.parent_session_id && <> · spawned by{" "}
         {parent
           ? <Link href={`/sessions/${session.parent_session_id}`}><code>{session.parent_session_id}</code></Link>

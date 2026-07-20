@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
 import { DeleteButton, DownloadButton } from "../../lib/delete";
+import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function FileDetail({ params }: { params: Promise<{ id: str
   if (!f?.id) notFound();
   return (
     <>
-      <div className="crumbs"><Link href="/files">Files</Link> / <CopyId id={f.id} /> · created {new Date(f.created_at).toLocaleString()}</div>
+      <div className="crumbs"><Link href="/files">Files</Link> / <CopyId id={f.id} /> · created <DateTime iso={f.created_at} /></div>
       <div className="pagehead">
         <h1>{f.name}</h1>
         <div className="formrow" style={{ margin: 0 }}>

@@ -5,6 +5,7 @@ import { wsGet, offsetOf } from "../lib/api";
 import { DeleteButton } from "../lib/delete";
 import { Pager } from "../lib/pager";
 import { fmtCost, type CostSettings } from "../lib/currency";
+import { DateTime } from "../lib/datetime";
 
 interface Session {
   id: string; name: string | null; agent_name: string; agent_version: number;
@@ -57,7 +58,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
               <td><span className={`phase ${s.status === "completed" || s.status === "idle" ? "Ready" : s.status === "failed" ? "Failed" : "Deploying"}`}>{s.status}</span></td>
               <td>{fmtTokens(s.tokens_in)} / {fmtTokens(s.tokens_out)}</td>
               {showBilled && <td>{fmtCost(Number(s.billed_cost ?? 0), c!.currency)}</td>}
-              <td>{new Date(s.updated_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</td>
+              <td><DateTime iso={s.updated_at} /></td>
               <td><DeleteButton path={`/v1/sessions/${s.id}`} confirmText="Delete this session and its trace?" /></td>
             </tr>
           ))}
