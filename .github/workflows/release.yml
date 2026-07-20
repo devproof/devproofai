@@ -56,7 +56,7 @@ jobs:
         # No floating `latest` tag — images are referenced by pinned version
         # tags only (user decision 2026-07-19).
         run: docker buildx bake --set "*.platform=linux/amd64,linux/arm64" --push
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5   # v4 targets Node 20 (deprecated on runners)
       # dependency build resolves Chart.lock but still needs the repo
       # definition (fresh runners have no helm repos).
       - run: helm repo add llmkube https://defilantech.github.io/LLMKube
