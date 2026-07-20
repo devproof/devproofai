@@ -123,7 +123,7 @@ test("controlplane renders with minio-backed S3 env and namespace envs", () => {
   assert.ok(out.includes("name: devproof-controlplane"));
   assert.ok(/DEVPROOF_S3_ENDPOINT[\s\S]*?http:\/\/minio\.devproof\.svc\.cluster\.local:9000/.test(out));
   assert.ok(out.includes("DEVPROOF_AGENTS_NAMESPACE"));
-  assert.ok(/DEVPROOF_RUNNER_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-session-runner:dev51/.test(out));
+  assert.ok(/DEVPROOF_RUNNER_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-session-runner:v0\.1\.0/.test(out));
   assert.ok(/DEVPROOF_EGRESS_PROXY_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-squid:6\.13/.test(out));
   assert.ok(out.includes("DEVPROOF_EGRESS_PROXY_POD"));
   assert.ok(/HOST[\s\S]*?0\.0\.0\.0/.test(out));

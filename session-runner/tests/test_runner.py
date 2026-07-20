@@ -616,5 +616,64 @@ class ContainedDestTest(unittest.TestCase):
         self.assertIsNone(runner._contained_dest("/mnt/wiki/w", "../w-evil/x.md"))
 
 
+class SalvageTest(unittest.TestCase):
+    """run_salvage isolates the four exit steps: one failure must not starve
+    the others (live bug sesn_2i8o557ubzft — a memory-sync 400 in the shared
+    try block lost the wiki write-back AND the checkpoint)."""
+
+    def _run(self, fail):
+        ran, events = [], []
+        originals = {}
+
+        def make(name):
+            def fn():
+                ran.append(name)
+                if name in fail:
+                    raise RuntimeError(f"{name} exploded")
+                return "file_ckpt" if name == "save_checkpoint" else None
+            return fn
+
+        for name in ("collect_outputs", "sync_memory_back", "sync_wiki_back", "save_checkpoint"):
+            originals[name] = getattr(runner, name)
+            setattr(runner, name, make(name))
+        originals["emit"] = runner.emit
+        runner.emit = lambda t, p: events.append((t, p))
+        try:
+            return runner.run_salvage(), ran, events
+        finally:
+            for name, fn in originals.items():
+                setattr(runner, name, fn)
+
+    def test_memory_failure_does_not_starve_wiki_or_checkpoint(self):
+        ckpt, ran, events = self._run(fail={"sync_memory_back"})
+        self.assertEqual(ckpt, "file_ckpt")
+        self.assertEqual(ran, ["collect_outputs", "sync_memory_back", "sync_wiki_back", "save_checkpoint"])
+        self.assertEqual(events, [("session.memory_sync_failed", {"error": "sync_memory_back exploded"})])
+
+    def test_all_green_returns_checkpoint_and_no_events(self):
+        ckpt, ran, events = self._run(fail=set())
+        self.assertEqual(ckpt, "file_ckpt")
+        self.assertEqual(len(ran), 4)
+        self.assertEqual(events, [])
+
+    def test_checkpoint_failure_keeps_its_event_name(self):
+        ckpt, _ran, events = self._run(fail={"save_checkpoint"})
+        self.assertIsNone(ckpt)
+        self.assertEqual(events[0][0], "session.checkpoint_failed")
+
+
+class MemoryStoreGateTest(unittest.TestCase):
+    def test_sync_memory_back_skips_without_a_store(self):
+        # No DEVPROOF_MEMORY_STORE ⇒ never walks /mnt/memory (a model note
+        # there would otherwise 400 against the CP and poison the salvage).
+        prev_store, prev_walk = runner.MEMORY_STORE, runner.os.walk
+        runner.MEMORY_STORE = ""
+        runner.os.walk = lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("walked without a store"))
+        try:
+            self.assertIsNone(runner.sync_memory_back())
+        finally:
+            runner.MEMORY_STORE, runner.os.walk = prev_store, prev_walk
+
+
 if __name__ == "__main__":
     unittest.main()

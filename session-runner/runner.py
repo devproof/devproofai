@@ -100,6 +100,11 @@ def save_checkpoint() -> str | None:
 SKILLS = json.loads(os.environ.get("DEVPROOF_SKILLS", "[]"))
 SKILLS_DIR = "/work/.devproof/skills"
 MEMORY = json.loads(os.environ.get("DEVPROOF_MEMORY", "[]"))
+# Set (to the store id) only when the session HAS a memory store. /mnt/memory is
+# always writable (pre-created in the image), so without this gate a model note
+# written there makes sync_memory_back hit the CP's 400 "session has no memory
+# store" (live bug sesn_2i8o557ubzft).
+MEMORY_STORE = os.environ.get("DEVPROOF_MEMORY_STORE", "")
 MEMORY_DIR = "/mnt/memory"
 # LLM wikis (spec 2026-07-18): each mounts read-only at /mnt/wiki/<name>; at most
 # one is mode "write" (this agent is its sole maintainer) and syncs back on exit.
@@ -269,6 +274,8 @@ def sync_memory_back() -> None:
     """Diff-based write-back (scales to many concurrent sessions per store):
     upload only files whose content changed; report deleted paths explicitly.
     Only the paths THIS session touched are sent — no blind whole-tree overwrite."""
+    if not MEMORY_STORE:
+        return  # no store attached — nothing to sync, even if the model wrote to /mnt/memory
     entries = []
     seen = set()
     for root, _dirs, names in os.walk(MEMORY_DIR):
@@ -436,6 +443,23 @@ def stage_prior_outputs() -> list[str]:
     OUTPUTS_DIR: collect_outputs() walks that dir and would re-publish these
     as duplicate output files every subsequent turn."""
     return _stage_files_deduped(PRIOR_OUTPUTS, PRIOR_OUTPUTS_DIR)
+
+
+def run_salvage() -> str | None:
+    """End-of-turn salvage with each step isolated: one failing sync must not
+    starve the others (live bug sesn_2i8o557ubzft — a memory-sync 400 aborted
+    the shared try block, losing the wiki write-back AND the checkpoint).
+    Returns the checkpoint file id, or None if that step failed."""
+    def step(name, fn):
+        try:
+            return fn()
+        except Exception as err:  # noqa: BLE001 — salvage must never fail the turn
+            emit(f"session.{name}_failed", {"error": str(err)[:500]})
+            return None
+    step("output_sync", collect_outputs)
+    step("memory_sync", sync_memory_back)
+    step("wiki_sync", sync_wiki_back)
+    return step("checkpoint", save_checkpoint)
 
 
 def post(path: str, body: dict, attempts: int = 4, _sleep=time.sleep) -> None:
@@ -883,14 +907,7 @@ async def main() -> None:
 
     # Salvage runs on EVERY exit path — a failed turn must not lose the files
     # already written to outputs, memory learnings, or the resume checkpoint.
-    checkpoint_id = None
-    try:
-        collect_outputs()
-        sync_memory_back()
-        sync_wiki_back()
-        checkpoint_id = save_checkpoint()
-    except Exception as err:  # noqa: BLE001 — a failed checkpoint must not fail the turn
-        emit("session.checkpoint_failed", {"error": str(err)[:500]})
+    checkpoint_id = run_salvage()
     post_status({"status": "failed" if (crash or result_error) else "idle",
                  "sdkSessionId": sdk_session_id, "checkpointFileId": checkpoint_id})
 

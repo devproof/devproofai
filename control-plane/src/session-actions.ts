@@ -174,7 +174,8 @@ export async function createSessionAction(
   const subagents = await resolveSubagents(repo, workspaceId, session.config, b.parentSessionId);
   const wikis = await resolveWikiMounts(repo, workspaceId, (session.config as any).wiki_refs);
   const gated = await gatedLaunch(deps, session.id, 0, {
-    id: session.id, prompt: b.prompt, config: session.config, attachments, skills, memory, workspace: workspaceId,
+    id: session.id, prompt: b.prompt, config: session.config, attachments, skills, memory,
+    memoryStore: b.memoryStore ?? null, workspace: workspaceId,
     environment: { id: environment!.id, pod: environment!.pod ?? {},
                    allowPackageManagers: environment!.allow_package_managers ?? false }, mcpServers, subagents, wikis,
   });
@@ -252,6 +253,7 @@ export async function sendMessageAction(
   const wikis = await resolveWikiMounts(repo, workspaceId, (turn.config as any).wiki_refs);
   const gated = await gatedLaunch(deps, id, turn.turn, {
     id, prompt: b.prompt, config: turn.config, attachments: launchAttachments, priorOutputs, skills,
+    memoryStore: session?.memory_store_id ?? null,
     resume: { turn: turn.turn, sdkSessionId: turn.sdkSessionId, checkpointFileId: turn.checkpointFileId },
     workspace: workspaceId,
     environment: { id: environment!.id, pod: environment!.pod ?? {},

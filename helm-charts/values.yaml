@@ -77,7 +77,7 @@ agents:
   # (the CP creates the Jobs, so there is no pullPolicy knob here).
   runnerImage:
     repository: ghcr.io/devproof/devproofai-session-runner
-    tag: dev51
+    tag: v0.1.0
   # Per-environment egress proxy (squid) — a standalone pod the CP creates per
   # environment, so it carries the full component contract. Passed to the CP as
   # DEVPROOF_EGRESS_PROXY_IMAGE + DEVPROOF_EGRESS_PROXY_POD (JSON).

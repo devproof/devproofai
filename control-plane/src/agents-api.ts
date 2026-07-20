@@ -49,6 +49,10 @@ export interface Orchestrator {
     priorOutputs?: { id: string; name: string }[];
     skills?: { name: string; files: { path: string; fileId: string }[] }[];
     memory?: { path: string; fileId: string }[];
+    /** Attached memory store id — renders DEVPROOF_MEMORY_STORE so the runner
+     *  only attempts memory write-back when a store exists (/mnt/memory is
+     *  always writable; live bug sesn_2i8o557ubzft). */
+    memoryStore?: string | null;
     /** LLM wikis mounted at /mnt/wiki/<name> (spec 2026-07-18). Read wikis are
      *  staged read-only; the single write wiki is synced back. The structure
      *  spec is a hardcoded runner-side convention (not per-wiki config). */
@@ -246,7 +250,10 @@ export async function registerAgentRoutes(
     let key: string;
     if (kind === "checkpoint" && sess) {
       key = objectKey({ kind: "checkpoint", workspaceId, sessionId: sess.id, fileId: id });
-    } else if (kind === "memory" && sess?.memory_store_id) {
+    } else if (kind === "memory") {
+      // No store ⇒ reject loudly instead of silently storing an orphan under
+      // an upload-style key (the follow-up /memory post 400s anyway).
+      if (!sess?.memory_store_id) return reply.code(400).send({ error: "session has no memory store" });
       if (!validEntryPath(name)) return reply.code(400).send({ error: "bad memory path" });
       key = objectKey({ kind: "memory", workspaceId, storeId: sess.memory_store_id, path: name });
     } else if (kind === "wiki" && sess) {

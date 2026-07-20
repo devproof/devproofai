@@ -32,6 +32,17 @@ const GATEWAY_URL =
   process.env.DEVPROOF_GATEWAY_INTERNAL ?? `http://${GATEWAY_HOST}:4000`;
 const CALLBACK_URL =
   process.env.DEVPROOF_CALLBACK_URL ?? "http://host.docker.internal:7080";
+// The callback host must ride NO_PROXY: runner→CP event posts otherwise go
+// through the per-env Squid proxy, which 403s them (live bug sesn_iwjjyat38yk3
+// — the in-cluster CP host wasn't listed, only host.docker.internal).
+const CALLBACK_HOST = new URL(CALLBACK_URL).hostname;
+// In-cluster callback: <svc>.<ns>.svc[.cluster.local] ⇒ the NetworkPolicy needs
+// an egress rule to the CP pods too, or enforcing CNIs drop the event posts
+// after the proxy bypass (live bug sesn_2i8o557ubzft: runner SYN-blocked on
+// :7080, session stuck "generating" forever).
+const CALLBACK_SVC_NS = CALLBACK_HOST.match(/^[^.]+\.([^.]+)\.svc(\.cluster\.local)?$/)?.[1];
+const CALLBACK_PORT = Number(new URL(CALLBACK_URL).port ||
+  (CALLBACK_URL.startsWith("https:") ? 443 : 80));
 
 export function realOrchestrator(): Orchestrator {
   // Fail fast at boot: without the env var the CP silently launches the stale
@@ -143,35 +154,18 @@ export function realOrchestrator(): Orchestrator {
           k8s.setHeaderOptions("Content-Type", k8s.PatchStrategy.MergePatch),
         );
       }
+      const policyBody = buildEnvNetworkPolicy(environmentId, cmName);
       try {
-        await networking.createNamespacedNetworkPolicy({
-          namespace: AGENTS_NAMESPACE,
-          body: {
-            metadata: { name: `env-${environmentId.replace(/_/g, "-").toLowerCase()}` },
-            spec: {
-              podSelector: { matchLabels: { "devproof.ai/environment": environmentId } },
-              policyTypes: ["Egress"],
-              egress: [
-                { to: [{ namespaceSelector: {}, podSelector: { matchLabels: { "k8s-app": "kube-dns" } } }],
-                  ports: [{ protocol: "UDP", port: 53 }, { protocol: "TCP", port: 53 }] },
-                // The egress proxy (only sanctioned path to the internet).
-                { to: [{ podSelector: { matchLabels: { app: cmName } } }], ports: [{ protocol: "TCP", port: 3128 }] },
-                // The model gateway only (agents call /v1/messages) — A2: restrict to
-                // the gateway pods on :4000 rather than the whole namespace, which also
-                // hosts Postgres/MinIO. (Enforced only on a NetworkPolicy-capable CNI.)
-                { to: [{
-                    namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": GATEWAY_NAMESPACE } },
-                    podSelector: { matchLabels: { app: "devproof-gateway" } },
-                  }],
-                  ports: [{ protocol: "TCP", port: 4000 }] },
-                // Control-plane callback on the docker-desktop host.
-                { to: [{ ipBlock: { cidr: "192.168.65.0/24" } }] },
-              ],
-            },
-          },
-        });
+        await networking.createNamespacedNetworkPolicy({ namespace: AGENTS_NAMESPACE, body: policyBody });
       } catch (err: any) {
-        if (err?.code !== 409) throw err; // already exists is fine
+        if (err?.code !== 409) throw err;
+        // Rule changes must reach pre-existing environments (merge-patch
+        // replaces the egress array whole, like the proxy Deployment above).
+        await networking.patchNamespacedNetworkPolicy(
+          { name: policyBody.metadata.name, namespace: AGENTS_NAMESPACE,
+            body: { spec: policyBody.spec } },
+          k8s.setHeaderOptions("Content-Type", k8s.PatchStrategy.MergePatch),
+        );
       }
     },
     // Add/update a single credential key without disturbing the others.
@@ -309,6 +303,42 @@ export function buildWorkPvc(session: Parameters<Orchestrator["startSession"]>[0
   };
 }
 
+/** Pure NetworkPolicy body for one environment — exported for tests. */
+export function buildEnvNetworkPolicy(environmentId: string, proxyApp: string) {
+  return {
+    metadata: { name: `env-${environmentId.replace(/_/g, "-").toLowerCase()}` },
+    spec: {
+      podSelector: { matchLabels: { "devproof.ai/environment": environmentId } },
+      policyTypes: ["Egress"],
+      egress: [
+        { to: [{ namespaceSelector: {}, podSelector: { matchLabels: { "k8s-app": "kube-dns" } } }],
+          ports: [{ protocol: "UDP", port: 53 }, { protocol: "TCP", port: 53 }] },
+        // The egress proxy (only sanctioned path to the internet).
+        { to: [{ podSelector: { matchLabels: { app: proxyApp } } }], ports: [{ protocol: "TCP", port: 3128 }] },
+        // The model gateway only (agents call /v1/messages) — A2: restrict to
+        // the gateway pods on :4000 rather than the whole namespace, which also
+        // hosts Postgres/MinIO. (Enforced only on a NetworkPolicy-capable CNI.)
+        { to: [{
+            namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": GATEWAY_NAMESPACE } },
+            podSelector: { matchLabels: { app: "devproof-gateway" } },
+          }],
+          ports: [{ protocol: "TCP", port: 4000 }] },
+        // Control-plane callback: the in-cluster CP pods when CALLBACK_URL is a
+        // cluster service (label matches the chart, like devproof-gateway above)…
+        ...(CALLBACK_SVC_NS ? [{
+          to: [{
+            namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": CALLBACK_SVC_NS } },
+            podSelector: { matchLabels: { app: "devproof-controlplane" } },
+          }],
+          ports: [{ protocol: "TCP", port: CALLBACK_PORT }],
+        }] : []),
+        // …and the docker-desktop host for the out-of-cluster dev CP.
+        { to: [{ ipBlock: { cidr: "192.168.65.0/24" } }] },
+      ],
+    },
+  };
+}
+
 /** Pure Job body for one session turn — exported for tests (spec 2026-07-12). */
 export function buildTurnJob(session: Parameters<Orchestrator["startSession"]>[0]) {
   const turn = session.resume?.turn ?? 0;
@@ -321,7 +351,9 @@ export function buildTurnJob(session: Parameters<Orchestrator["startSession"]>[0
     "devproof.ai/environment": envId,
   };
   const proxy = `http://egress-${envId.replace(/_/g, "-").toLowerCase()}.${AGENTS_NAMESPACE}.svc.cluster.local:3128`;
-  const noProxy = `${GATEWAY_HOST},host.docker.internal,localhost,127.0.0.1,10.0.0.0/8`;
+  const noProxy = [...new Set([
+    GATEWAY_HOST, CALLBACK_HOST, "host.docker.internal", "localhost", "127.0.0.1", "10.0.0.0/8",
+  ])].join(",");
   const nodeSelector = pod.nodeSelector && Object.keys(pod.nodeSelector).length ? { ...pod.nodeSelector } : undefined;
   const tolerations = (pod.tolerations ?? []).map((t) => ({
     ...(t.key != null ? { key: t.key } : {}),
@@ -412,6 +444,12 @@ export function buildTurnJob(session: Parameters<Orchestrator["startSession"]>[0
                 { name: "DEVPROOF_CHECKPOINT_WORK", value: disk.type === "pvc" ? "0" : "1" },
                 { name: "DEVPROOF_SKILLS", value: JSON.stringify(session.skills ?? []) },
                 { name: "DEVPROOF_MEMORY", value: JSON.stringify(session.memory ?? []) },
+                // Store-presence gate: absent ⇒ the runner skips memory
+                // write-back entirely (a model note in the always-writable
+                // /mnt/memory otherwise 400s the salvage; sesn_2i8o557ubzft).
+                ...(session.memoryStore
+                  ? [{ name: "DEVPROOF_MEMORY_STORE", value: session.memoryStore }]
+                  : []),
                 { name: "DEVPROOF_WIKIS", value: JSON.stringify(session.wikis ?? []) },
                 { name: "HTTP_PROXY", value: proxy }, { name: "http_proxy", value: proxy },
                 { name: "HTTPS_PROXY", value: proxy }, { name: "https_proxy", value: proxy },

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildTurnJob, buildWorkPvc, workPvcName, realOrchestrator } from "../src/orchestrator.ts";
+import { buildTurnJob, buildWorkPvc, workPvcName, buildEnvNetworkPolicy, realOrchestrator } from "../src/orchestrator.ts";
 
 const base = () => ({
   id: "sesn_x1", prompt: "hi", workspace: "wrkspc_default",
@@ -152,6 +152,34 @@ test("buildTurnJob strips unknown toleration fields, keeps the four allowed", ()
   const podSpec: any = buildTurnJob(s).spec.template.spec;
   assert.deepEqual(podSpec.tolerations, [{ key: "gpu", operator: "Equal", value: "true", effect: "NoSchedule" }]);
   assert.deepEqual(podSpec.nodeSelector, { zone: "a" });
+});
+
+test("DEVPROOF_MEMORY_STORE renders only when a store is attached", () => {
+  const s: any = { ...base(), memoryStore: "memstore_a" };
+  const env = buildTurnJob(s).spec.template.spec.containers[0].env as any[];
+  assert.equal(env.find((e) => e.name === "DEVPROOF_MEMORY_STORE").value, "memstore_a");
+  const bare = buildTurnJob(base() as any).spec.template.spec.containers[0].env as any[];
+  assert.equal(bare.find((e: any) => e.name === "DEVPROOF_MEMORY_STORE"), undefined);
+});
+
+test("NO_PROXY includes the callback host — runner event posts must bypass Squid", () => {
+  const env = buildTurnJob(base() as any).spec.template.spec.containers[0].env as any[];
+  const eventsHost = new URL(env.find((e) => e.name === "DEVPROOF_EVENTS_URL").value).hostname;
+  const noProxy = env.find((e) => e.name === "NO_PROXY").value.split(",");
+  assert.ok(noProxy.includes(eventsHost),
+    `NO_PROXY ${noProxy} is missing the events host ${eventsHost}`);
+});
+
+test("env NetworkPolicy: DNS, proxy, gateway, and the host callback ipBlock", () => {
+  const pol = buildEnvNetworkPolicy("env_a1", "egress-env-a1");
+  assert.equal(pol.metadata.name, "env-env-a1");
+  assert.deepEqual(pol.spec.podSelector, { matchLabels: { "devproof.ai/environment": "env_a1" } });
+  const egress = pol.spec.egress as any[];
+  assert.ok(egress.some((r) => r.to?.[0]?.podSelector?.matchLabels?.app === "egress-env-a1"));
+  assert.ok(egress.some((r) => r.to?.[0]?.podSelector?.matchLabels?.app === "devproof-gateway"));
+  // Out-of-cluster dev callback (default CALLBACK_URL): the host ipBlock, no CP pod rule.
+  assert.ok(egress.some((r) => r.to?.[0]?.ipBlock?.cidr === "192.168.65.0/24"));
+  assert.ok(!egress.some((r) => r.to?.[0]?.podSelector?.matchLabels?.app === "devproof-controlplane"));
 });
 
 test("realOrchestrator fails fast when DEVPROOF_RUNNER_IMAGE is unset", () => {
