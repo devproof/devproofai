@@ -7,18 +7,16 @@ LLMkube operator is a pinned chart dependency.
 ## Install
 
     helm dependency build helm-charts
-    helm install devproof helm-charts -n devproof --create-namespace --skip-schema-validation
+    scripts/patch-llmkube-schema.sh
+    helm install devproof helm-charts -n devproof --create-namespace
 
 Dev (docker-desktop):
 
     helm install devproof helm-charts -n devproof --create-namespace \
-      -f helm-charts/values-dev.yaml --skip-schema-validation
+      -f helm-charts/values-dev.yaml
 
-`--skip-schema-validation` is required on every `helm lint`/`template`/
-`install`/`upgrade` of this chart: the bundled LLMkube 0.9.7 dependency's
-`values.schema.json` has `additionalProperties: false` and does not declare
-`enabled`/`global`, both of which Helm always injects into subchart values —
-an upstream LLMkube schema gap, not an error in this chart.
+(`patch-llmkube-schema.sh` fixes the vendored LLMkube subchart schema after
+`helm dependency build`; the released OCI chart ships already patched.)
 
 ### Upgrades
 

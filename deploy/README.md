@@ -7,11 +7,13 @@ README. The dev profile is `helm-charts/values-dev.yaml`:
 
 ```bash
 helm dependency build helm-charts
+scripts/patch-llmkube-schema.sh
 helm install devproof helm-charts -n devproof --create-namespace \
-  -f helm-charts/values-dev.yaml --skip-schema-validation
+  -f helm-charts/values-dev.yaml
 ```
 
-`--skip-schema-validation` is required (llmkube subchart schema quirk). Under
+`patch-llmkube-schema.sh` fixes the vendored LLMkube subchart schema after
+`helm dependency build` (it would otherwise reject the umbrella install). Under
 Helm v4 (server-side apply), the control plane co-owns the `litellm-config`
 ConfigMap's `config.yaml` key at runtime, so re-`helm upgrade` needs
 `--force-conflicts` (the chart re-emits the live value verbatim via `lookup`).
