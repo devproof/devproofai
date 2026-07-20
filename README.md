@@ -99,13 +99,13 @@ Prerequisites: a Kubernetes cluster with a default StorageClass,
 ```bash
 # One umbrella chart deploys everything: control plane, console, gateway,
 # operator, Postgres, MinIO:
-helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.1 -n devproof --create-namespace
+helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.2 -n devproof --create-namespace
 
 # Don't want to serve local models? Install without the LLMkube serving
 # engine — agents, routing, API keys and metering then run purely against
 # external APIs (OpenAI, Anthropic, OpenRouter, custom), added later in the
 # console under Deployments -> Add endpoint:
-helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.1 -n devproof --create-namespace --set llmkube.enabled=false
+helm install devproof oci://ghcr.io/devproof/devproofai-helm --version v0.1.2 -n devproof --create-namespace --set llmkube.enabled=false
 
 # Wait for the pods, then expose the console and the model gateway:
 kubectl -n devproof get pods
