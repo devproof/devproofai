@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const s = await wsGet<{
     costs: CostSettings; limits: { maxWorkGb: number }; maintenance: MaintenanceSettings;
-    appearance: { theme: string }; maintenanceLastRun: MaintenanceSummary | null;
+    appearance: { theme: string; timeFormat?: string }; maintenanceLastRun: MaintenanceSummary | null;
   }>("/v1/settings").catch(() => null);
   return (
     <>

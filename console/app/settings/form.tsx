@@ -101,13 +101,14 @@ function sectionLines(s: MaintenanceSummary): [string, string][] {
 
 export function SettingsForm({ initial, initialLimits, initialMaintenance, initialAppearance, lastRun }: {
   initial: CostSettings; initialLimits: { maxWorkGb: number };
-  initialMaintenance: MaintenanceSettings; initialAppearance: { theme: string };
+  initialMaintenance: MaintenanceSettings; initialAppearance: { theme: string; timeFormat?: string };
   lastRun: MaintenanceSummary | null;
 }) {
   const router = useRouter();
   const [c, setC] = useState<CostSettings>(initial);
   const [maxWorkGb, setMaxWorkGb] = useState(String(initialLimits?.maxWorkGb ?? 2048));
   const [theme, setTheme] = useState(initialAppearance?.theme ?? "system");
+  const [timeFormat, setTimeFormat] = useState(initialAppearance?.timeFormat ?? "browser");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [cron, setCron] = useState(initialMaintenance.cron);
@@ -164,7 +165,7 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
       };
     } catch (e) { setBusy(false); setMsg((e as Error).message); return; }
     const err = await submitJson("PUT", "/v1/settings", {
-      costs: c, limits: { maxWorkGb: n }, maintenance, appearance: { theme },
+      costs: c, limits: { maxWorkGb: n }, maintenance, appearance: { theme, timeFormat },
     });
     setBusy(false);
     setMsg(err ?? "Saved.");
@@ -321,6 +322,20 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
                 <option value="dark">Dark</option>
               </select>
               System follows each viewer&apos;s operating system setting — applies to everyone using this console
+            </span>
+          </label>
+          <label className="setrow plain">
+            <span />
+            <span className="setrow-name">Time format</span>
+            <span className="setrow-hint" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <select value={timeFormat} onChange={(e) => setTimeFormat(e.target.value)}
+                      style={{ width: 230, flex: "none" }}>
+                <option value="browser">Browser default (20.7.2026, 22:13)</option>
+                <option value="iso">ISO 8601 (2026-07-20 22:13)</option>
+                <option value="us">US (7/20/2026, 10:13 PM)</option>
+                <option value="eu">European (20.07.2026, 22:13)</option>
+              </select>
+              timestamps always show in each viewer&apos;s timezone — applies to everyone using this console
             </span>
           </label>
         </div>
