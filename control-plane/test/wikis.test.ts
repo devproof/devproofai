@@ -155,6 +155,28 @@ test("validateWikiRefs enforces one writer per wiki", { skip: !available }, asyn
   await repo.deleteAgent(ws, a.id);
 });
 
+test("wikiInUse reads only each agent's LATEST version", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const ws = (await repo.createWorkspace(`t-wiki-${Date.now()}`)).id;
+  const wiki = await repo.createWiki(ws, `t-wiki-latest-${Date.now()}`);
+  const a = await repo.createAgent(ws, `t-wiki-a-${Date.now()}`, { routing: "r", wikiRefs: [{ wikiId: wiki.id, mode: "write" }] });
+  assert.equal(await repo.wikiInUse(wiki.id), true);
+
+  // A new version WITHOUT the ref frees the wiki — old versions keep their
+  // wiki_refs forever (every save is a new version), so counting them would
+  // block deletion permanently (live bug: "Test" wiki undeletable).
+  await repo.newAgentVersion(ws, a.id, { routing: "r", wikiRefs: [] });
+  assert.equal(await repo.wikiInUse(wiki.id), false);
+
+  // Re-attaching on a later version blocks again (read mode counts too).
+  await repo.newAgentVersion(ws, a.id, { routing: "r", wikiRefs: [{ wikiId: wiki.id, mode: "read" }] });
+  assert.equal(await repo.wikiInUse(wiki.id), true);
+
+  await repo.deleteAgent(ws, a.id);
+  assert.equal(await repo.wikiInUse(wiki.id), false);
+  await repo.deleteWiki(ws, wiki.id);
+});
+
 test("hasWriteRef + agentHasActiveSession drive the single-session writer lock", { skip: !available }, async () => {
   const repo = new Repo(pool);
   const ws = (await repo.createWorkspace(`t-wiki-${Date.now()}`)).id;

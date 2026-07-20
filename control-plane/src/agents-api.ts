@@ -658,6 +658,13 @@ export async function registerAgentRoutes(
     return { store };
   });
 
+  app.patch("/v1/memory-stores/:id", async (req, reply) => {
+    const b = (req.body ?? {}) as { name?: string };
+    const store = await repo.updateMemoryStore(ws(req), (req.params as any).id, b);
+    if (!store) return reply.code(404).send({ error: "memory store not found" });
+    return { store };
+  });
+
   app.get("/v1/memory-stores/:id/tree", async (req) => ({
     entries: await repo.getMemoryEntries((req.params as any).id),
   }));

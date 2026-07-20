@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { MemoryBrowser } from "./browser";
+import { EditMemoryStoreButton } from "../edit";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
+import { DeleteButton } from "../../lib/delete";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,16 @@ export default async function MemoryStoreDetail({ params }: { params: Promise<{ 
     <>
       <div className="crumbs"><Link href="/memory-stores">Memory stores</Link> / <CopyId id={id} />
         {store && <> · last modified {new Date(store.updated_at).toLocaleString()}</>}</div>
-      <h1>Memory store</h1>
+      <div className="pagehead">
+        <h1>{store?.name ?? "Memory store"}</h1>
+        {store && (
+          <div className="formrow" style={{ margin: 0 }}>
+            <EditMemoryStoreButton store={store} />
+            <DeleteButton path={`/v1/memory-stores/${store.id}`} redirect="/memory-stores"
+                          confirmText={`Delete memory store "${store.name}" and all its entries?`} label="Delete memory store" />
+          </div>
+        )}
+      </div>
       <p className="sub">{entries.length} file(s)</p>
       <MemoryBrowser storeId={id} entries={entries} />
     </>

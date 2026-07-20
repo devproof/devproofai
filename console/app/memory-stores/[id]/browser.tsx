@@ -4,6 +4,8 @@ import { useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { wsHeader } from "../../lib/client";
 import { Modal, Field, ConfirmDialog } from "../../lib/modal";
+import { Markdown } from "../../lib/markdown";
+import { splitFrontmatter, resolveRelativeHref } from "../../lib/file-tree";
 
 export function MemoryBrowser({ storeId, entries }:
   { storeId: string; entries: { path: string; file_id: string; updated_at: string }[] }) {
@@ -17,6 +19,8 @@ export function MemoryBrowser({ storeId, entries }:
   const [path, setPath] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [raw, setRaw] = useState(false);
+  const isMd = (p: string | null) => !!p && p.toLowerCase().endsWith(".md");
 
   async function load(path: string) {
     setSelected(path);
@@ -47,7 +51,12 @@ export function MemoryBrowser({ storeId, entries }:
                 <div className="formrow" style={{ justifyContent: "space-between" }}>
                   <p className="sub" style={{ margin: 0 }}>/{loaded} · updated{" "}
                     {new Date(entries.find((e) => e.path === loaded)!.updated_at).toLocaleString()}</p>
-                  <button className="ghost danger" onClick={() => setDeleting(true)}>Delete</button>
+                  <span className="formrow" style={{ margin: 0, gap: 8 }}>
+                    {isMd(loaded) && (
+                      <button className="ghost" onClick={() => setRaw((r) => !r)}>{raw ? "Rendered" : "Raw"}</button>
+                    )}
+                    <button className="ghost danger" onClick={() => setDeleting(true)}>Delete</button>
+                  </span>
                   {deleting && loaded && <ConfirmDialog title="Delete memory" verb="Delete"
                     message={`Delete "${loaded}" from this store?`}
                     onClose={() => setDeleting(false)}
@@ -62,7 +71,24 @@ export function MemoryBrowser({ storeId, entries }:
                       setLoaded(null); router.refresh(); return null;
                     }} />}
                 </div>
-                <pre className="block">{content}</pre>
+                {isMd(loaded) && !raw
+                  ? (() => {
+                      const { meta, body } = splitFrontmatter(content);
+                      return (
+                        <div className="block md-scroll">
+                          {meta.length > 0 && (
+                            <div className="wiki-meta">
+                              {meta.map(([k, v]) => <span key={k}><b>{k}:</b> {v}</span>)}
+                            </div>
+                          )}
+                          <Markdown text={body} onNavigate={(href) => {
+                            const target = resolveRelativeHref(loaded, href);
+                            if (entries.some((e) => e.path === target)) { setRaw(false); load(target); }
+                          }} />
+                        </div>
+                      );
+                    })()
+                  : <pre className="block">{content}</pre>}
               </>
             ) : <div className="empty">Select a file to view its content.</div>}
           </div>

@@ -168,6 +168,11 @@ class WikiPromptTest(unittest.TestCase):
         self.assertIn("log.md", block)
         self.assertIn(f"{runner.WIKI_DIR}/kb", block)
         self.assertIn("Delegate", block)  # reporting channel for corrections
+        # Live confusion sesn_f8wbmb6mp5sv: the mount is a turn-start snapshot,
+        # and attaching wiki pages to Delegate calls just duplicates them.
+        self.assertIn("snapshot", block)
+        self.assertIn("next turn", block)
+        self.assertIn("Do not attach", block)
         self.assertNotIn("Claude", block)
 
     def test_write_wiki_is_sole_maintainer_with_hardcoded_structure(self):
@@ -179,6 +184,9 @@ class WikiPromptTest(unittest.TestCase):
         self.assertIn("index.md", block)
         self.assertIn("frontmatter", block)
         self.assertIn("log.md", block)
+        # The wiki edits ARE the deliverable — copying pages into outputs
+        # republished every page as a session file (live noise sesn_hbl8oziyx9q3).
+        self.assertIn("ARE the deliverable", block)
         self.assertNotIn("Claude", block)
 
 
@@ -207,6 +215,43 @@ class StageWikisTest(unittest.TestCase):
         self.assertEqual(names, ["kb"])
         self.assertTrue(os.path.exists(os.path.join(tmp, "kb", "index.md")))
         self.assertFalse(os.path.exists(os.path.join(tmp, "kb", "gone.md")))
+
+    @staticmethod
+    def _stage_one(mode):
+        import unittest.mock as mock, tempfile
+        tmp = tempfile.mkdtemp(prefix="devproof-wiki-ro-")
+
+        class _Resp:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b"# page\n"
+
+        with mock.patch.object(runner, "WIKIS", [{"name": "kb", "mode": mode, "entries": [
+                    {"path": "index.md", "fileId": "file_ok"}]}]), \
+             mock.patch.object(runner, "WIKI_DIR", tmp), \
+             mock.patch.object(runner.urllib.request, "urlopen", lambda url, timeout=0: _Resp()):
+            runner.stage_wikis()
+        return os.path.join(tmp, "kb")
+
+    def test_read_wiki_mount_is_filesystem_readonly(self):
+        # A reader agent ignoring the READ-ONLY prompt must get a real error —
+        # read wikis never sync back, so a silently accepted write would just
+        # vanish at turn end while the model believes it updated the wiki.
+        base = self._stage_one("read")
+        page = os.path.join(base, "index.md")
+        with self.assertRaises(PermissionError):
+            open(page, "w")
+        if os.name != "nt":  # dir perms are POSIX-only; the pod is Linux
+            with self.assertRaises(PermissionError):
+                open(os.path.join(base, "new-page.md"), "w")
+
+    def test_write_wiki_mount_stays_writable(self):
+        base = self._stage_one("write")
+        page = os.path.join(base, "index.md")
+        with open(page, "a", encoding="utf-8") as f:
+            f.write("more\n")
+        with open(os.path.join(base, "new-page.md"), "w", encoding="utf-8") as f:
+            f.write("new\n")
 
 
 class PlatformPromptTest(unittest.TestCase):
@@ -304,7 +349,8 @@ class DelegateToolTest(unittest.TestCase):
     def setUp(self):
         runner.SUBAGENTS[:] = [{"name": "reviewer", "agentId": "agent_1", "instructions": "x"}]
         self._orig = (runner._post_json, runner._get_json, runner._upload_file, runner._download,
-                      runner.SUBAGENTS_DIR, runner.DELEGATE_POLL_SEC, runner.DELEGATE_RETRY_BASE)
+                      runner.SUBAGENTS_DIR, runner.DELEGATE_POLL_SEC, runner.DELEGATE_RETRY_BASE,
+                      runner.OUTPUTS_DIR, runner.PRIOR_OUTPUTS_DIR)
         # run_delegate mkdirs under SUBAGENTS_DIR before the (mocked) download —
         # /mnt may not be writable in the test container, so point it at a tmp dir.
         runner.SUBAGENTS_DIR = tempfile.mkdtemp()
@@ -314,7 +360,8 @@ class DelegateToolTest(unittest.TestCase):
     def tearDown(self):
         runner.SUBAGENTS[:] = []
         (runner._post_json, runner._get_json, runner._upload_file, runner._download,
-         runner.SUBAGENTS_DIR, runner.DELEGATE_POLL_SEC, runner.DELEGATE_RETRY_BASE) = self._orig
+         runner.SUBAGENTS_DIR, runner.DELEGATE_POLL_SEC, runner.DELEGATE_RETRY_BASE,
+         runner.OUTPUTS_DIR, runner.PRIOR_OUTPUTS_DIR) = self._orig
 
     def test_unknown_agent_is_error(self):
         text, is_error = anyio.run(runner.run_delegate, {"agent": "nope", "prompt": "hi"}, "/work")
@@ -333,7 +380,9 @@ class DelegateToolTest(unittest.TestCase):
         self.assertFalse(is_error)
         header = json.loads(text.split("\n", 1)[0])
         self.assertEqual(header["session"], "sesn_child")
-        expected = f"{runner.SUBAGENTS_DIR}/reviewer/out/report.md"
+        # Staged paths are normalized to forward slashes (_contained_subagent_dest),
+        # so normalize the tmp-dir prefix too or the comparison breaks on Windows.
+        expected = f"{runner.SUBAGENTS_DIR}/reviewer/out/report.md".replace("\\", "/")
         self.assertEqual(header["files"], [expected])
         self.assertTrue(text.endswith("done!"))
         self.assertEqual(downloads, [("file_9", expected)])
@@ -362,6 +411,63 @@ class DelegateToolTest(unittest.TestCase):
         else:
             self.assertEqual(posted["turn"], int(runner.TURN))
 
+    def test_missing_outputs_path_falls_back_to_prior_outputs(self):
+        # A follow-up turn's pod stages earlier-turn deliverables in
+        # PRIOR_OUTPUTS_DIR, but the model's transcript memory still says
+        # OUTPUTS_DIR — Delegate must resolve the staged copy instead of
+        # failing FileNotFoundError (live bug sesn_4buy9z7zlyhi).
+        runner.OUTPUTS_DIR = tempfile.mkdtemp()   # empty: file not re-created this turn
+        runner.PRIOR_OUTPUTS_DIR = tempfile.mkdtemp()
+        staged = os.path.join(runner.PRIOR_OUTPUTS_DIR, "report.md")
+        with open(staged, "w", encoding="utf-8") as f:
+            f.write("prior deliverable")
+        uploads = []
+        runner._upload_file = lambda path, name: uploads.append((path, name)) or "file_up1"
+        posted = {}
+        runner._post_json = lambda url, body: posted.update(body) or {"session": "sesn_child"}
+        runner._get_json = lambda url: {"status": "idle", "resultText": "ok", "outputs": []}
+        runner.DELEGATE_POLL_SEC = 0
+        text, is_error = anyio.run(runner.run_delegate, {
+            "agent": "reviewer", "prompt": "go",
+            "files": [runner.OUTPUTS_DIR + "/report.md"],
+        }, "/work")
+        self.assertFalse(is_error)
+        self.assertEqual(uploads, [(staged, "report.md")])
+        self.assertEqual(posted["files"], ["file_up1"])
+
+    def test_existing_outputs_path_wins_over_prior_copy(self):
+        # A file re-created this turn must be uploaded from OUTPUTS_DIR, not
+        # shadowed by the stale prior-turn copy.
+        runner.OUTPUTS_DIR = tempfile.mkdtemp()
+        runner.PRIOR_OUTPUTS_DIR = tempfile.mkdtemp()
+        current = os.path.join(runner.OUTPUTS_DIR, "report.md")
+        for d in (current, os.path.join(runner.PRIOR_OUTPUTS_DIR, "report.md")):
+            with open(d, "w", encoding="utf-8") as f:
+                f.write("x")
+        uploads = []
+        runner._upload_file = lambda path, name: uploads.append(path) or "file_up1"
+        runner._post_json = lambda url, body: {"session": "sesn_child"}
+        runner._get_json = lambda url: {"status": "idle", "resultText": "ok", "outputs": []}
+        runner.DELEGATE_POLL_SEC = 0
+        anyio.run(runner.run_delegate, {
+            "agent": "reviewer", "prompt": "go", "files": [current],
+        }, "/work")
+        self.assertEqual(uploads, [current])
+
+    def test_missing_file_error_names_prior_outputs_and_skips_create(self):
+        runner.OUTPUTS_DIR = tempfile.mkdtemp()
+        runner.PRIOR_OUTPUTS_DIR = tempfile.mkdtemp()  # empty — no fallback either
+        created = {"n": 0}
+        runner._post_json = lambda url, body: created.update(n=created["n"] + 1) or {"session": "sesn_child"}
+        missing = runner.OUTPUTS_DIR + "/nope.md"
+        text, is_error = anyio.run(runner.run_delegate, {
+            "agent": "reviewer", "prompt": "go", "files": [missing],
+        }, "/work")
+        self.assertTrue(is_error)
+        self.assertIn("nope.md", text)
+        self.assertIn(runner.PRIOR_OUTPUTS_DIR, text)
+        self.assertEqual(created["n"], 0, "no child session may be created for a doomed call")
+
     def test_uploaded_file_name_does_not_clobber_agent_name_for_outputs(self):
         # Regression: the upload-disambiguation loop used to reuse the `name`
         # variable that holds the subagent name, so a call with both `files`
@@ -378,7 +484,7 @@ class DelegateToolTest(unittest.TestCase):
             "agent": "reviewer", "prompt": "go", "files": ["/work/a/data.txt"],
         }, "/work")
         self.assertFalse(is_error)
-        expected = f"{runner.SUBAGENTS_DIR}/reviewer/report.md"
+        expected = f"{runner.SUBAGENTS_DIR}/reviewer/report.md".replace("\\", "/")
         self.assertEqual(downloaded, [("file_9", expected)])
         header = json.loads(text.split("\n", 1)[0])
         self.assertEqual(header["files"], [expected])
@@ -479,7 +585,7 @@ class DelegateToolTest(unittest.TestCase):
         text, is_error = anyio.run(runner.run_delegate, {"agent": "reviewer", "prompt": "go"}, "/work")
         self.assertFalse(is_error)
         header = json.loads(text.split("\n", 1)[0])
-        expected = f"{runner.SUBAGENTS_DIR}/reviewer/out/report.md"
+        expected = f"{runner.SUBAGENTS_DIR}/reviewer/out/report.md".replace("\\", "/")
         self.assertEqual(header["files"], [expected])
 
     def test_colliding_file_basenames_get_dir_disambiguated_names(self):

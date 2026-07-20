@@ -251,8 +251,14 @@ export async function sendMessageAction(
   const mcpServers = renderMcpServers((turn.config as any).mcp_servers ?? {}, credentials);
   const subagents = await resolveSubagents(repo, workspaceId, turn.config, session?.parent_session_id);
   const wikis = await resolveWikiMounts(repo, workspaceId, (turn.config as any).wiki_refs);
+  // Re-resolve the store's CURRENT entries every turn (mirrors createAction) —
+  // without this, /mnt/memory mounts empty on follow-up turns and the model
+  // can't read what it saved earlier (live bug sesn_f8wbmb6mp5sv).
+  const memory = session?.memory_store_id
+    ? (await repo.getMemoryEntries(session.memory_store_id)).map((e: any) => ({ path: e.path, fileId: e.file_id }))
+    : [];
   const gated = await gatedLaunch(deps, id, turn.turn, {
-    id, prompt: b.prompt, config: turn.config, attachments: launchAttachments, priorOutputs, skills,
+    id, prompt: b.prompt, config: turn.config, attachments: launchAttachments, priorOutputs, skills, memory,
     memoryStore: session?.memory_store_id ?? null,
     resume: { turn: turn.turn, sdkSessionId: turn.sdkSessionId, checkpointFileId: turn.checkpointFileId },
     workspace: workspaceId,

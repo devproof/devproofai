@@ -465,6 +465,24 @@ test("messages to non-idle session -> 409; idle session resumes", async () => {
   assert.equal(started.length, 2);
 });
 
+test("follow-up turn stages the memory store's CURRENT entries", async () => {
+  // Live bug sesn_f8wbmb6mp5sv: messageAction passed memoryStore (write-back
+  // worked) but never resolved `memory`, so every follow-up turn mounted an
+  // empty /mnt/memory and the model could not read what it saved earlier.
+  const { app, startSpecs, sessions, repo } = await build();
+  const a = (await app.inject({ method: "POST", url: "/v1/agents", payload: { name: "memfu", routing: "m", environmentId: "env_0" } })).json();
+  const s = (await app.inject({ method: "POST", url: "/v1/sessions", payload: { agent: a.id, prompt: "p" } })).json();
+  sessions.find((x: any) => x.id === s.id).memory_store_id = "memstore_1";
+  (repo as any).memoryEntries = [{ path: "learnings.md", file_id: "file_mem00000001" }];
+
+  await app.inject({ method: "POST", url: `/v1/sessions/${s.id}/status`, payload: { status: "idle", sdkSessionId: "sdk1" } });
+  const ok = await app.inject({ method: "POST", url: `/v1/sessions/${s.id}/messages`, payload: { prompt: "again" } });
+  assert.equal(ok.statusCode, 202);
+  assert.equal(startSpecs.length, 2);
+  assert.deepEqual(startSpecs[1].memory, [{ path: "learnings.md", fileId: "file_mem00000001" }]);
+  assert.equal(startSpecs[1].memoryStore, "memstore_1");
+});
+
 test("POST /v1/sessions records the prompt as the first user event", async () => {
   const { app } = await build();
   const a = (await app.inject({ method: "POST", url: "/v1/agents", payload: { name: "u1", routing: "m", environmentId: "env_0" } })).json();

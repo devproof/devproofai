@@ -271,3 +271,38 @@ test("GET /v1/memory-stores/:id returns the store row, 404s, and is workspace-sc
 
   await app.close();
 });
+
+test("PATCH /v1/memory-stores/:id renames the store, 404s, and is workspace-scoped", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const ws = (await repo.createWorkspace(`t-api-${uniq()}`)).id;
+  const other = (await repo.createWorkspace(`t-api-other-${uniq()}`)).id;
+  const store = await repo.createMemoryStore(ws, `store-${uniq()}`);
+
+  const app = Fastify();
+  await registerAgentRoutes(app, repo as any, {} as any, {} as any);
+
+  const renamed = await app.inject({
+    method: "PATCH", url: `/v1/memory-stores/${store.id}`,
+    headers: { "X-Devproof-Workspace": ws, "content-type": "application/json" },
+    payload: { name: "renamed-store" },
+  });
+  assert.equal(renamed.statusCode, 200);
+  assert.equal(renamed.json().store.name, "renamed-store");
+
+  const missing = await app.inject({
+    method: "PATCH", url: `/v1/memory-stores/memstore_nope`,
+    headers: { "X-Devproof-Workspace": ws, "content-type": "application/json" },
+    payload: { name: "x" },
+  });
+  assert.equal(missing.statusCode, 404);
+
+  const wrongWs = await app.inject({
+    method: "PATCH", url: `/v1/memory-stores/${store.id}`,
+    headers: { "X-Devproof-Workspace": other, "content-type": "application/json" },
+    payload: { name: "stolen" },
+  });
+  assert.equal(wrongWs.statusCode, 404, "the route must be workspace-scoped");
+  assert.equal((await repo.getMemoryStore(store.id, ws)).name, "renamed-store");
+
+  await app.close();
+});

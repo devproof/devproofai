@@ -217,14 +217,21 @@ def wiki_prompt_block(wikis: list) -> str:
             f"\n\nKnowledge wikis (READ-ONLY) are mounted at {WIKI_DIR}: {names}."
             f" Navigate via each wiki's index.md. Do NOT edit read-only wikis; if"
             f" you find an error or gap, report it to the wiki's maintainer agent"
-            f" via the Delegate tool."
+            f" via the Delegate tool. Wiki mounts are a snapshot taken at turn"
+            f" start: pages a delegated maintainer updates during this turn appear"
+            f" in your mount on your next turn, so do not re-read the mount to"
+            f" verify a delegation — trust the maintainer's report. Do not attach"
+            f" {WIKI_DIR} files to Delegate calls: an agent with the wiki attached"
+            f" already sees the wiki itself."
         )
     if write:
         parts.append(
             f"\n\nYou are the SOLE maintainer (writer) of the wiki \"{write['name']}\""
             f" mounted read-write at {WIKI_DIR}/{write['name']}. Maintain it exactly"
             f" per the structure above — keep index.md and log.md current with every"
-            f" change; your edits are saved automatically when the turn ends."
+            f" change; your edits are saved automatically when the turn ends. Your"
+            f" wiki edits ARE the deliverable: never copy wiki pages into the outputs"
+            f" directory or return them as files — just report what you changed."
         )
     return "".join(parts)
 
@@ -327,6 +334,17 @@ def stage_wikis() -> list[str]:
                 out.write(data)
             if w.get("mode") == "write":
                 _WIKI_BASELINE[entry["path"].lstrip("/")] = hashlib.sha256(data).hexdigest()
+        if w.get("mode") != "write":
+            # Enforce READ-ONLY on the filesystem: read wikis never sync back,
+            # so a silently accepted write would vanish at turn end while the
+            # model believes it updated the wiki — make it a PermissionError
+            # instead (the prompt's report-via-Delegate path is the recovery).
+            # Not tamper-proof (the agent user could chmod +w), but it stops
+            # the realistic accidental Write/Edit.
+            for root, _dirs, fnames in os.walk(base, topdown=False):
+                for n in fnames:
+                    os.chmod(os.path.join(root, n), 0o444)
+                os.chmod(root, 0o555)
         names.append(w["name"])
     return names
 
@@ -539,6 +557,18 @@ def _safe_subagent_dest(name: str, filename: str) -> str | None:
     return dest.replace("\\", "/")
 
 
+def _resolve_delegate_file(path: str) -> str:
+    """Resolve a Delegate `files` path. The model's transcript memory says an
+    earlier-turn deliverable lives in OUTPUTS_DIR, but a follow-up turn's pod
+    stages those read-only in PRIOR_OUTPUTS_DIR — fall back there so a parent
+    can hand any published output file to a subagent (live bug
+    sesn_4buy9z7zlyhi). A file re-created this turn wins over the prior copy."""
+    if os.path.exists(path) or not path.startswith(OUTPUTS_DIR + "/"):
+        return path
+    prior = os.path.join(PRIOR_OUTPUTS_DIR, os.path.basename(path))
+    return prior if os.path.exists(prior) else path
+
+
 async def run_delegate(tool_input: dict, cwd: str) -> tuple[str, bool]:
     """Delegate-tool executor: run a configured subagent as a full platform
     session and block until it finishes. Blocking HTTP runs in worker threads
@@ -589,7 +619,7 @@ async def run_delegate(tool_input: dict, cwd: str) -> tuple[str, bool]:
         for p in call_paths:
             base = os.path.basename(p)
             upload_name = f"{os.path.basename(os.path.dirname(p))}__{base}" if base_counts[base] > 1 else base
-            file_ids.append(await anyio.to_thread.run_sync(_upload_file, p, upload_name))
+            file_ids.append(await anyio.to_thread.run_sync(_upload_file, _resolve_delegate_file(p), upload_name))
         body = {"agent_id": match["agentId"], "prompt": tool_input.get("prompt") or "",
                 "files": file_ids}
         if session_id:
@@ -603,6 +633,11 @@ async def run_delegate(tool_input: dict, cwd: str) -> tuple[str, bool]:
     except urllib.error.HTTPError as err:
         detail = err.read().decode(errors="replace")[:500]
         return f"delegate failed: {err.code} {detail}", True
+    except FileNotFoundError as err:
+        # Only the `files` uploads touch the filesystem here. Point the model
+        # at the prior-outputs staging dir instead of a bare errno.
+        return (f"delegate failed: file not found: {err.filename or err} — files you published "
+                f"in earlier turns are staged read-only under {PRIOR_OUTPUTS_DIR}", True)
     except Exception as err:  # noqa: BLE001 — a tool error must never kill the turn
         return f"delegate failed: {type(err).__name__}: {err}", True
 

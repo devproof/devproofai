@@ -782,10 +782,15 @@ export class Repo {
       },
     };
   }
-  /** True when any agent version references this wiki (blocks delete, like skills). */
+  /** True when any agent's LATEST version references this wiki (blocks delete).
+   *  Older versions keep their wiki_refs forever (every save is a new version),
+   *  so counting them would make a once-attached wiki permanently undeletable;
+   *  sessions pinned to old versions are safe — resolveWikiMounts skips stale refs. */
   async wikiInUse(id: string) {
     const { rows } = await this.pool.query(
-      `SELECT 1 FROM agent_versions WHERE wiki_refs @> $1::jsonb OR wiki_refs @> $2::jsonb LIMIT 1`,
+      `SELECT 1 FROM agents a
+       JOIN LATERAL (SELECT wiki_refs FROM agent_versions WHERE agent_id = a.id ORDER BY version DESC LIMIT 1) v ON true
+       WHERE v.wiki_refs @> $1::jsonb OR v.wiki_refs @> $2::jsonb LIMIT 1`,
       [JSON.stringify([{ wikiId: id, mode: "read" }]), JSON.stringify([{ wikiId: id, mode: "write" }])]);
     return rows.length > 0;
   }
@@ -1055,6 +1060,13 @@ export class Repo {
     const id = rid("memstore");
     await this.pool.query("INSERT INTO memory_stores (id, workspace_id, name) VALUES ($1, $2, $3)", [id, workspaceId, name]);
     return { id, name };
+  }
+  async updateMemoryStore(workspaceId: string, id: string, patch: { name?: string }) {
+    if (patch.name === undefined) return this.getMemoryStore(id, workspaceId);
+    const { rows } = await this.pool.query(
+      `UPDATE memory_stores SET name = $3, updated_at = now() WHERE id = $1 AND workspace_id = $2 RETURNING *`,
+      [id, workspaceId, patch.name]);
+    return rows[0] ?? null;
   }
   async listMemoryStores(workspaceId: string, limit = 100, offset = 0) {
     const { rows } = await this.pool.query(

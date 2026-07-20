@@ -4,6 +4,7 @@ route WebFetch/MCP traffic through the proxy, keep gateway traffic direct, and
 hand the proxy env down to Bash children (that is what constrains pip, curl,
 npm, ... inside the sandbox)."""
 import os
+import shutil
 import tempfile
 import unittest
 
@@ -89,6 +90,16 @@ class EgressTest(unittest.TestCase):
     def test_bash_children_inherit_proxy_env(self):
         """pip/curl/npm restrictions ride the inherited proxy env — verify a
         shell child (and thus everything it spawns) sees it."""
+        if os.name == "nt":
+            # On a Windows host `bash` usually resolves to WSL bash, which does
+            # not inherit Windows env vars at all — the inheritance under test
+            # is unobservable through it. Use Git Bash (which does inherit), or
+            # skip when it isn't installed. The pod runtime is Linux bash.
+            git = shutil.which("git")
+            git_bash = git and os.path.join(os.path.dirname(os.path.dirname(git)), "bin", "bash.exe")
+            if not (git_bash and os.path.exists(git_bash)):
+                self.skipTest("no env-inheriting bash on this Windows host")
+            os.environ["DEVPROOF_SDK_SHELL"] = git_bash
         set_proxy("http://egress-env-x.devproof-agents.svc.cluster.local:3128")
         out, err = run_tool(
             BASH, {"command": 'echo "https_proxy=$HTTPS_PROXY no_proxy=$NO_PROXY"'},
