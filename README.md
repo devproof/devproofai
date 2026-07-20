@@ -40,7 +40,7 @@ OpenRouter, custom endpoints), switchable per request.
 - **Easy development.** Create an agent in the console in a minute — pick a
   routing, an environment and a prompt. Versioned skills (progressive
   disclosure), memory stores, file attachments and a Python client
-  (`python-client/`, Apache-2.0) round out the workflow.
+  round out the workflow.
 - **Secured environments.** Sessions get no network egress unless their
   environment allowlists specific hosts (per-environment proxy +
   NetworkPolicy). Secrets live in credential vaults, injected as pod-level
