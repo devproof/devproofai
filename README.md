@@ -240,10 +240,11 @@ glance:
 
 ![Dashboard](docs/images/dashboard.png)
 
-An agent session — the live transcript of every message, thought and tool
-call, with token totals and the resolved model:
+An agent session, recorded live — the transcript grows with every thought and
+tool call, tokens and cost tick in real time, the agent delegates to a second
+agent, and the finished result opens as rendered markdown:
 
-![Agent session with live transcript](docs/images/agent-session.png)
+![Agent session recorded live](docs/images/agent-session-live.gif)
 
 An LLM wiki — a hierarchical knowledge base with one maintainer agent and any
 number of readers, browsable in the console:
