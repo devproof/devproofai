@@ -21,6 +21,7 @@ import { runMaintenance, validateMaintenanceSettings, mergeMaintenanceSettings }
 import { objectKey, validEntryPath } from "./object-key.ts";
 import { storeSkillPackage } from "./skill-upload.ts";
 import { shortId } from "./id.ts";
+import { seedWikiSkeleton } from "./wiki-seed.ts";
 import { reframeFailureText } from "./failure-text.ts";
 import { deleteSessionFully } from "./session-delete.ts";
 import { localServingEnabled } from "./serving-mode.ts";
@@ -697,7 +698,9 @@ export async function registerAgentRoutes(
   app.post("/v1/wikis", async (req, reply) => {
     const b = (req.body ?? {}) as { name?: string; description?: string };
     if (!b?.name) return reply.code(400).send({ error: "name required" });
-    return reply.code(201).send(await repo.createWiki(ws(req), b.name, b.description ?? ""));
+    const wiki = await repo.createWiki(ws(req), b.name, b.description ?? "");
+    await seedWikiSkeleton(repo, files, ws(req), wiki.id, wiki.name, b.description ?? "");
+    return reply.code(201).send(wiki);
   });
 
   app.get("/v1/wikis", async (req) => {

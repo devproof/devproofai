@@ -4,10 +4,17 @@
 // run-tests.mjs after the suite.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import Fastify from "fastify";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createPool, migrate } from "../src/db.ts";
 import { Repo } from "../src/repo.ts";
 import { validateWikiRefs, hasWriteRef, resolveWikiMounts } from "../src/wiki-refs.ts";
 import { releaseWriterQueue } from "../src/writer-queue.ts";
+import { seedWikiSkeleton } from "../src/wiki-seed.ts";
+import { localFileStore } from "../src/filestore.ts";
+import { registerAgentRoutes } from "../src/agents-api.ts";
 
 const pool = createPool();
 let available = true;
@@ -41,6 +48,85 @@ test("wiki CRUD + entries diff + delete returns file ids", { skip: !available },
   const ids = await repo.deleteWiki(ws, wiki.id);
   assert.deepEqual(ids, [f2]); // remaining entry file id returned
   assert.equal(await repo.getWiki(wiki.id, ws), null);
+});
+
+test("seedWikiSkeleton creates index.md + log.md at wiki creation", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const ws = (await repo.createWorkspace(`t-wiki-${Date.now()}`)).id;
+  const root = mkdtempSync(join(tmpdir(), "wiki-seed-"));
+  const files = localFileStore(root);
+  try {
+    const wiki = await repo.createWiki(ws, `t-wiki-seed-${Date.now()}`, "Test knowledge base");
+    await seedWikiSkeleton(repo, files, ws, wiki.id, wiki.name, "Test knowledge base");
+
+    // Exactly the two structural files, as wiki entries.
+    const entries = await repo.getWikiEntries(wiki.id);
+    assert.deepEqual(entries.map((e: any) => e.path).sort(), ["index.md", "log.md"]);
+
+    // index.md: title + description + explicit empty-state line (no frontmatter —
+    // the runner's WIKI_STRUCTURE reserves frontmatter for entity pages).
+    const idx = entries.find((e: any) => e.path === "index.md");
+    const idxRec = await repo.getFileRecord(idx.file_id);
+    assert.equal(idxRec.object_key, `${ws}/wiki/${wiki.id}/index.md`);
+    assert.equal(idxRec.kind, "wiki");
+    const idxText = (await files.get(idxRec.object_key)).toString();
+    assert.ok(idxText.startsWith(`# ${wiki.name}\n`), "index titled with wiki name");
+    assert.ok(idxText.includes("Test knowledge base"), "index carries the description");
+    assert.ok(idxText.includes("No pages yet"), "index has an explicit empty state");
+    assert.ok(!idxText.startsWith("---"), "index has no frontmatter");
+
+    // log.md: newest-first ISO-8601-dated genesis entry.
+    const log = entries.find((e: any) => e.path === "log.md");
+    const logRec = await repo.getFileRecord(log.file_id);
+    const logText = (await files.get(logRec.object_key)).toString();
+    assert.match(logText, /^# Log\n/);
+    assert.match(logText, /\d{4}-\d{2}-\d{2}: wiki created/);
+
+    // A description-less wiki still seeds a well-formed index.
+    const bare = await repo.createWiki(ws, `t-wiki-seed-b-${Date.now()}`);
+    await seedWikiSkeleton(repo, files, ws, bare.id, bare.name, "");
+    const bareIdx = (await repo.getWikiEntries(bare.id)).find((e: any) => e.path === "index.md");
+    const bareText = (await files.get((await repo.getFileRecord(bareIdx.file_id)).object_key)).toString();
+    assert.ok(bareText.startsWith(`# ${bare.name}\n`));
+    assert.ok(!bareText.includes("\n\n\n"), "no blank gap where the description would be");
+
+    for (const id of [...(await repo.deleteWiki(ws, wiki.id)), ...(await repo.deleteWiki(ws, bare.id))]) {
+      await repo.deleteFileRecordById(id);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("POST /v1/wikis seeds the skeleton through the real route", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const wsId = (await repo.createWorkspace(`t-wiki-${Date.now()}`)).id;
+  const root = mkdtempSync(join(tmpdir(), "wiki-route-"));
+  const files = localFileStore(root);
+  const app = Fastify();
+  // Wiki routes never touch the orchestrator; a bare stub is enough.
+  await registerAgentRoutes(app, repo, {} as any, files);
+  const hdrs = { "x-devproof-workspace": wsId, "content-type": "application/json" };
+  let wikiId: string | null = null;
+  try {
+    const res = await app.inject({
+      method: "POST", url: "/v1/wikis", headers: hdrs,
+      payload: { name: `t-wiki-route-${Date.now()}`, description: "Routed" },
+    });
+    assert.equal(res.statusCode, 201);
+    wikiId = res.json().id;
+
+    const tree = await app.inject({ method: "GET", url: `/v1/wikis/${wikiId}/tree`, headers: hdrs });
+    assert.deepEqual(tree.json().entries.map((e: any) => e.path).sort(), ["index.md", "log.md"]);
+
+    const content = await app.inject({ method: "GET", url: `/v1/wikis/${wikiId}/content?path=index.md`, headers: hdrs });
+    assert.equal(content.statusCode, 200);
+    assert.ok(content.body.includes("No pages yet"));
+  } finally {
+    if (wikiId) for (const id of await repo.deleteWiki(wsId, wikiId)) await repo.deleteFileRecordById(id);
+    await app.close();
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("validateWikiRefs enforces one writer per wiki", { skip: !available }, async () => {

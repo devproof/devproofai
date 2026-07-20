@@ -21,6 +21,7 @@ import { credentialSecretKeys, validateCredentialBody, validateMcpServers, mcpHo
 import { validateSubagents, interruptChildSessions } from "./subagents.ts";
 import { validateWikiRefs, writeWikiIds } from "./wiki-refs.ts";
 import { objectKey, validEntryPath } from "./object-key.ts";
+import { seedWikiSkeleton } from "./wiki-seed.ts";
 import { storeSkillPackage } from "./skill-upload.ts";
 import { deleteSessionFully } from "./session-delete.ts";
 
@@ -382,7 +383,9 @@ export async function registerPublicApi(
     api.post("/wikis", async (req: any, reply) => {
       const b = (req.body ?? {}) as { name?: string; description?: string };
       if (!b?.name) return reply.code(400).send({ error: "name required" });
-      return reply.code(201).send(await repo.createWiki(ws(req), b.name, b.description ?? ""));
+      const wiki = await repo.createWiki(ws(req), b.name, b.description ?? "");
+      await seedWikiSkeleton(repo, files, ws(req), wiki.id, wiki.name, b.description ?? "");
+      return reply.code(201).send(wiki);
     });
 
     api.get("/wikis", async (req: any) => {
