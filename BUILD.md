@@ -23,15 +23,15 @@ The Python client: `cd python-client && python -m build` (needs
 | 14 commits later | `v0.1.0-14-ga1b2c3d` |
 | uncommitted changes | `…-dirty` |
 
-Release = run the **bump-version** workflow manually (Actions → bump-version
-→ Run workflow) and enter the version (e.g. `v0.2.0`) — nothing publishes
-images automatically. It stamps the version into every pinned spot
-(Chart.yaml, the devproof image tags in values.yaml, both package.jsons, the
-README install examples), commits the bump, force-moves the git tag onto that
-commit (an existing tag is overwritten), and dispatches **release**, which
-builds from the tag: the image version comes from `scripts/version.sh`
-against that tag (asserted equal), so git and GHCR can't drift. No manual
-tagging.
+Release = two manual workflow runs. First **bump-version** (Actions →
+bump-version → Run workflow) with the version (e.g. `v0.2.0`): it stamps the
+version into every pinned spot (Chart.yaml, the devproof image tags in
+values.yaml, both package.jsons, the README install examples), commits the
+bump, and force-moves the git tag onto that commit (an existing tag is
+overwritten). Then **release**, run by hand on that tag ref: it builds from
+the tag — the image version comes from `scripts/version.sh` against it
+(asserted equal), so git and GHCR can't drift. No manual tagging; nothing
+publishes automatically.
 The version rides into every image as build arg `DEVPROOF_VERSION` →
 `ENV DEVPROOF_VERSION` + the `org.opencontainers.image.version` label, and:
 
@@ -112,13 +112,13 @@ Known gaps (accepted, deterministic-not-bit-for-bit):
 
 `.github/workflows/bump-version.yml`, manual only (`workflow_dispatch` with a
 `version` input): stamps the version everywhere, commits the bump on the
-dispatched branch, force-pushes the annotated tag `<version>` onto that
-commit (an existing tag is overwritten), and dispatches release on the tag
-ref — required because a GITHUB_TOKEN tag push never fires release's own
-`tags` trigger (that trigger only catches manually pushed tags).
+dispatched branch, and force-pushes the annotated tag `<version>` onto that
+commit (an existing tag is overwritten). It does NOT start the release — run
+that separately (and note a GITHUB_TOKEN tag push never fires release's
+`tags` trigger; that trigger only catches manually pushed tags).
 
-`.github/workflows/release.yml`, tag-driven (tag push or dispatched on a tag
-ref; it never creates tags): `docker buildx bake --push` from the shared
+`.github/workflows/release.yml`, tag-driven (manual tag push, or run by hand
+on a tag ref; it never creates tags): `docker buildx bake --push` from the shared
 bake file for `linux/amd64` + `linux/arm64` (arm64 under QEMU — expect a long
 build), pushing `ghcr.io/devproof/devproofai-<name>:<version>` (public GHCR;
 no floating `latest` - refs pin versions) using the built-in `GITHUB_TOKEN`.

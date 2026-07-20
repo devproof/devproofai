@@ -2,11 +2,11 @@
 # (Chart.yaml version/appVersion, the five devproof image tags in values.yaml,
 # both package.json+lock versions, the README helm-install examples), commits
 # the bump on the dispatched branch, then FORCE-moves the git tag onto that
-# commit (an existing tag is overwritten) and dispatches the release workflow
-# on it. The explicit dispatch is required: a tag pushed with GITHUB_TOKEN
-# never fires other workflows' push triggers (GitHub's recursion guard —
-# workflow_dispatch via API is the documented exception). release.yml only
-# consumes the tag; it no longer creates one.
+# commit (an existing tag is overwritten). It does NOT trigger the release:
+# a tag pushed with GITHUB_TOKEN never fires other workflows' push triggers
+# (GitHub's recursion guard), so after this run, start release.yml by hand
+# from the Actions tab with the tag as the ref (two separate actions on
+# purpose — user decision 2026-07-20).
 name: bump-version
 
 on:
@@ -18,7 +18,6 @@ on:
 
 permissions:
   contents: write   # pushes the bump commit + tag
-  actions: write    # dispatches release.yml
 
 jobs:
   bump:
@@ -71,7 +70,3 @@ jobs:
           # together or not at all (a race with a fresh commit on the branch
           # aborts both — re-run the workflow).
           git push --atomic origin "HEAD:refs/heads/$GITHUB_REF_NAME" "+refs/tags/$VERSION"
-      - name: dispatch release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run release.yml --ref "refs/tags/$VERSION"

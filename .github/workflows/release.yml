@@ -1,8 +1,9 @@
 # Release from an existing tag (no automatic publishing off main — user
-# decision 2026-07-19). This workflow does NOT create tags: bump-version.yml
-# stamps the version, pushes the tag, and dispatches this workflow on it (a
-# GITHUB_TOKEN tag push can't fire the tags trigger below — that trigger only
-# catches manually pushed tags). Builds all five images FROM the tag
+# decision 2026-07-19). This workflow does NOT create tags: run bump-version
+# first (stamps the version + pushes the tag), then start this one by hand on
+# the tag ref (two separate actions on purpose; a GITHUB_TOKEN tag push can't
+# fire the tags trigger below — that trigger only catches manually pushed
+# tags). Builds all five images FROM the tag
 # (scripts/version.sh must resolve to it) for linux/amd64 + linux/arm64 via
 # the SAME docker-bake.hcl as scripts/build.sh — keep it that way. The
 # platform override lives here (not in the bake file) so local builds stay
@@ -12,7 +13,7 @@ name: release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch: {}   # dispatched on a tag ref by bump-version.yml
+  workflow_dispatch: {}   # run manually with a tag as the ref
 
 permissions:
   contents: read
