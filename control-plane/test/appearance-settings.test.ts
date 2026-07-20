@@ -25,12 +25,27 @@ test("normalize: absent/invalid theme reads as the system default", () => {
   assert.equal(normalizeAppearance({ theme: "light" }).theme, "light");
 });
 
-test("validate: bad themes are named, valid passes", () => {
+test("normalize: absent/invalid timeFormat reads as the browser default", () => {
+  assert.deepEqual(DEFAULT_APPEARANCE, { theme: "system", timeFormat: "browser" });
+  assert.equal(normalizeAppearance({}).timeFormat, "browser");
+  assert.equal(normalizeAppearance({ timeFormat: "rfc2822" }).timeFormat, "browser");
+  assert.equal(normalizeAppearance({ timeFormat: 7 }).timeFormat, "browser");
+  assert.equal(normalizeAppearance({ theme: "dark" }).timeFormat, "browser");
+  for (const f of ["browser", "iso", "us", "eu"]) {
+    assert.equal(normalizeAppearance({ timeFormat: f }).timeFormat, f);
+  }
+});
+
+test("validate: bad themes and timeFormats are named, valid passes", () => {
   assert.equal(validateAppearance(undefined), null);
   assert.equal(validateAppearance({}), null);
   assert.equal(validateAppearance({ theme: "dark" }), null);
+  assert.equal(validateAppearance({ timeFormat: "iso" }), null);
+  assert.equal(validateAppearance({ theme: "dark", timeFormat: "eu" }), null);
   assert.match(validateAppearance({ theme: "blue" })!, /theme/);
   assert.match(validateAppearance({ theme: 7 })!, /theme/);
+  assert.match(validateAppearance({ timeFormat: "rfc2822" })!, /timeFormat/);
+  assert.match(validateAppearance({ timeFormat: 7 })!, /timeFormat/);
   assert.match(validateAppearance([])!, /object/);
 });
 
@@ -38,10 +53,10 @@ test("appearance round-trip via repo", { skip: !available }, async () => {
   const repo = new Repo(pool);
   const before = await repo.getAppearance();
   try {
-    await repo.putAppearance({ theme: "dark" });
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark" });
-    await repo.putAppearance({ theme: "light" });
-    assert.deepEqual(await repo.getAppearance(), { theme: "light" });
+    await repo.putAppearance({ theme: "dark", timeFormat: "iso" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "iso" });
+    await repo.putAppearance({ theme: "light", timeFormat: "browser" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "light", timeFormat: "browser" });
   } finally {
     await repo.putAppearance(before); // restore — the dev DB is shared
   }
@@ -99,13 +114,13 @@ test("PUT /v1/settings persists theme when provided, leaves it when omitted", { 
     });
     assert.equal(ok.statusCode, 200);
     assert.equal(ok.json().appearance.theme, "dark");
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
 
     // A body without `appearance` must NOT reset the stored theme.
     const omitted = await app.inject({ method: "PUT", url: "/v1/settings", payload: { costs: {} } });
     assert.equal(omitted.statusCode, 200);
     assert.equal(omitted.json().appearance.theme, "dark");
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
 
     // An empty `appearance` object is a no-op, not a reset to "system" —
     // mirrors the limits precedent (agents-api.test.ts). This is the case that
@@ -118,7 +133,7 @@ test("PUT /v1/settings persists theme when provided, leaves it when omitted", { 
     });
     assert.equal(empty.statusCode, 200);
     assert.equal(empty.json().appearance.theme, "dark");
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
   } finally {
     await repo.putAppearance(beforeTheme);
     cleanup();
