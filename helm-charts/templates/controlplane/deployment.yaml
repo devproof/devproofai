@@ -75,6 +75,10 @@ spec:
             - { name: DEVPROOF_GATEWAY_INTERNAL, value: http://gateway.{{ include "devproof.gatewayNamespace" $ }}.svc.cluster.local:{{ .Values.gateway.service.port }} }
             - { name: DEVPROOF_GATEWAY_LOCAL_URL, value: http://gateway.{{ include "devproof.gatewayNamespace" $ }}.svc.cluster.local:{{ .Values.gateway.service.port }} }
             - { name: DEVPROOF_CALLBACK_URL, value: http://controlplane.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controlplane.service.port }} }
+            # Target the gateway proxies /api to. Without it the CP falls back
+            # to its out-of-cluster dev default (host.docker.internal:7080),
+            # so every public-API call through the gateway 500s in-cluster.
+            - { name: DEVPROOF_PUBLIC_API_TARGET, value: http://controlplane.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controlplane.service.port }}/api }
             - { name: DEVPROOF_AGENTS_NAMESPACE, value: {{ .Values.agents.namespace | quote }} }
             - { name: DEVPROOF_GATEWAY_NAMESPACE, value: {{ include "devproof.gatewayNamespace" $ | quote }} }
             - { name: DEVPROOF_SERVING_NAMESPACE, value: {{ include "devproof.servingNamespace" $ | quote }} }
