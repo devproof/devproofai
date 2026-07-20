@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.3 — 2026-07-20
+
+### Added
+- Console: configurable time format (Settings → Appearance, after Theme) —
+  Browser default, ISO 8601, US, or European. Applies to every timestamp,
+  platform-wide; changing it re-renders open pages without a reload.
+
+### Fixed
+- Console timestamps were inconsistent and partly wrong: server-rendered
+  pages showed en-US/UTC (two hours off for European viewers), client-side
+  views the browser locale. All timestamps now render through one formatter
+  in each viewer's locale and timezone, at minutes precision.
+- Sessions list: rows no longer wrap the Billed and Last activity cells onto
+  two lines; table cells keep atomic values on one line everywhere.
+
 ## v0.1.2 — 2026-07-20
 
 ### Fixed
