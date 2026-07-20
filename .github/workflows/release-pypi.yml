@@ -27,7 +27,7 @@ jobs:
           [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]] \
             || { echo "version must look like 0.2.0 (got: ${{ inputs.version }})"; exit 1; }
           echo "VERSION=$v" >> "$GITHUB_ENV"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6   # v5 targets Node 20 (deprecated on runners)
         with:
           python-version: "3.x"
       - name: build sdist + wheel
