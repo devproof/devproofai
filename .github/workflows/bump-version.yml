@@ -1,0 +1,77 @@
+# Manual version bump + tag. Stamps the version into every file that pins it
+# (Chart.yaml version/appVersion, the five devproof image tags in values.yaml,
+# both package.json+lock versions, the README helm-install examples), commits
+# the bump on the dispatched branch, then FORCE-moves the git tag onto that
+# commit (an existing tag is overwritten) and dispatches the release workflow
+# on it. The explicit dispatch is required: a tag pushed with GITHUB_TOKEN
+# never fires other workflows' push triggers (GitHub's recursion guard —
+# workflow_dispatch via API is the documented exception). release.yml only
+# consumes the tag; it no longer creates one.
+name: bump-version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g. v0.2.0) — stamped everywhere, pushed as the git tag (overwrites an existing tag), then released"
+        required: true
+
+permissions:
+  contents: write   # pushes the bump commit + tag
+  actions: write    # dispatches release.yml
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: validate version
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] \
+            || { echo "version must look like v0.2.0 (got: $VERSION)"; exit 1; }
+      - name: bump versions
+        run: |
+          bare="${VERSION#v}"
+          # Chart.yaml: top-level version/appVersion only (the indented llmkube
+          # dependency version doesn't match the ^ anchors).
+          sed -i -E "s/^version: .+/version: $bare/; s/^appVersion: .+/appVersion: \"$bare\"/" helm-charts/Chart.yaml
+          # values.yaml: only the five images this repo builds (the release
+          # bake targets). Third-party MIRRORS also live under
+          # ghcr.io/devproof/devproofai-* (llmkube-controller, postgres,
+          # minio, squid, …) — matching the registry prefix would clobber
+          # their pinned upstream tags, so match the exact image names.
+          awk -v v="$VERSION" '
+            /repository:/ { own = ($0 ~ /devproofai-(session-runner|gateway|control-plane|console|operator)[[:space:]]*$/) }
+            own && /^[[:space:]]*tag:/ { sub(/tag:.*/, "tag: " v); own = 0 }
+            { print }
+          ' helm-charts/values.yaml > /tmp/values.yaml && mv /tmp/values.yaml helm-charts/values.yaml
+          # package.json + package-lock.json in one go; --allow-same-version
+          # keeps re-runs of an already-bumped version green.
+          (cd control-plane && npm version "$bare" --no-git-tag-version --allow-same-version)
+          (cd console && npm version "$bare" --no-git-tag-version --allow-same-version)
+          # README helm-install examples reference the released chart version.
+          sed -i -E "s/--version v[0-9][0-9A-Za-z.-]*/--version $VERSION/g" README.md
+          git diff --stat
+      - name: commit + push + tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "versions already at $VERSION — re-tagging HEAD only"
+          else
+            git add -A
+            git commit -m "release: bump version to $VERSION"
+          fi
+          git tag -fa "$VERSION" -m "release $VERSION"
+          # Atomic: the branch fast-forward and the forced tag move land
+          # together or not at all (a race with a fresh commit on the branch
+          # aborts both — re-run the workflow).
+          git push --atomic origin "HEAD:refs/heads/$GITHUB_REF_NAME" "+refs/tags/$VERSION"
+      - name: dispatch release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref "refs/tags/$VERSION"
