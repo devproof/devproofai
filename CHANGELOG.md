@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.2 — 2026-07-20
+
+### Fixed
+- In-cluster gateway: the public-API pass-through now targets the in-cluster
+  control plane instead of the out-of-cluster dev address (every `/api` call
+  through the gateway returned a 500).
+- `mirror-images` links all mirrored packages to the repo, including the
+  Docker-format manifest lists (minio, squid) that `buildx --annotation`
+  silently skipped.
+- Chart render tests no longer pin the release version, which broke on the
+  first `bump-version` run.
+
+### Changed
+- `bump-version` only stamps and tags; the release build is started by hand
+  on the tag ref (BUILD.md updated).
+- CI: `azure/setup-helm` v4 → v5 and `actions/setup-python` v5 → v6 (Node 24).
+
 ## v0.1.1 — 2026-07-20
 
 ### Fixed
