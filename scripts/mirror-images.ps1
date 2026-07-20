@@ -24,18 +24,21 @@ $Mirrors = @(
 
 # The source annotation makes GHCR list the package under the devproofai
 # repo (the upstream images' own source labels point at THEIR repos).
-# Caveat: minio/minio and ubuntu/squid ship Docker-format manifest lists,
-# which cannot carry OCI annotations — buildx silently drops the flag there
-# (it re-pushes the upstream list unchanged). Their packages were connected
-# to the repo once (2026-07-20, via a hand-PUT annotated OCI index); the
-# package-repo connection persists across future pushes, so re-runs of this
-# script don't need to repeat it.
-$SourceAnnotation = "index:org.opencontainers.image.source=https://github.com/devproof/devproofai"
+# buildx applies it only when the upstream is an OCI index (postgres,
+# llmkube-controller); for Docker-format manifest lists (minio, squid) it is
+# silently dropped, so mirror-annotate.py re-PUTs those as annotated OCI
+# indexes afterwards. Both steps are idempotent — every run reasserts the
+# link instead of relying on a one-off manual fix.
+$SourceUrl = "https://github.com/devproof/devproofai"
+$SourceAnnotation = "index:org.opencontainers.image.source=$SourceUrl"
+$Annotate = Join-Path $PSScriptRoot "mirror-annotate.py"
 
 foreach ($m in $Mirrors) {
     Write-Host "==> $($m.Src) -> $Registry/$($m.Dst)"
     docker buildx imagetools create --annotation $SourceAnnotation --tag "$Registry/$($m.Dst)" $m.Src
     if ($LASTEXITCODE -ne 0) { throw "mirror failed: $($m.Src)" }
+    python $Annotate "$Registry/$($m.Dst)" $SourceUrl
+    if ($LASTEXITCODE -ne 0) { throw "annotate failed: $($m.Dst)" }
 }
 
 Write-Host "Done. Verify anonymously with:"

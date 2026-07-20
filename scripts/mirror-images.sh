@@ -24,18 +24,19 @@ MIRRORS=(
 
 # The source annotation makes GHCR list the package under the devproofai
 # repo (the upstream images' own source labels point at THEIR repos).
-# Caveat: minio/minio and ubuntu/squid ship Docker-format manifest lists,
-# which cannot carry OCI annotations — buildx silently drops the flag there
-# (it re-pushes the upstream list unchanged). Their packages were connected
-# to the repo once (2026-07-20, via a hand-PUT annotated OCI index); the
-# package-repo connection persists across future pushes, so re-runs of this
-# script don't need to repeat it.
-SOURCE_ANNOTATION="index:org.opencontainers.image.source=https://github.com/devproof/devproofai"
+# buildx applies it only when the upstream is an OCI index (postgres,
+# llmkube-controller); for Docker-format manifest lists (minio, squid) it is
+# silently dropped, so mirror-annotate.py re-PUTs those as annotated OCI
+# indexes afterwards. Both steps are idempotent — every run reasserts the
+# link instead of relying on a one-off manual fix.
+SOURCE_URL="https://github.com/devproof/devproofai"
+SOURCE_ANNOTATION="index:org.opencontainers.image.source=$SOURCE_URL"
 
 for entry in "${MIRRORS[@]}"; do
   read -r src dst <<<"$entry"
   echo "==> $src -> $REGISTRY/$dst"
   docker buildx imagetools create --annotation "$SOURCE_ANNOTATION" --tag "$REGISTRY/$dst" "$src"
+  python3 "$(dirname "$0")/mirror-annotate.py" "$REGISTRY/$dst" "$SOURCE_URL"
 done
 
 echo "Done. Verify anonymously with:"
