@@ -46,18 +46,18 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
       </p>
       <div className="tablewrap"><table>
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Agent</th><th>Status</th><th>Tokens in / out</th>{showBilled && <th>Billed</th>}<th>Last activity</th><th></th></tr>
+          <tr><th>ID</th><th className="flex">Name</th><th>Agent</th><th>Status</th><th>Tokens in / out</th>{showBilled && <th>Billed</th>}<th>Last activity</th><th></th></tr>
         </thead>
         <tbody>
           {sessions.map((s: Session) => (
             <tr key={s.id}>
               <td><Link href={`/sessions/${s.id}`}><code>{s.id}</code></Link></td>
-              <td>{s.name ?? "—"}</td>
+              <td className="flex">{s.name ?? "—"}</td>
               <td>{s.agent_name} <span className="phase ver">v{s.agent_version}</span></td>
               <td><span className={`phase ${s.status === "completed" || s.status === "idle" ? "Ready" : s.status === "failed" ? "Failed" : "Deploying"}`}>{s.status}</span></td>
               <td>{fmtTokens(s.tokens_in)} / {fmtTokens(s.tokens_out)}</td>
               {showBilled && <td>{fmtCost(Number(s.billed_cost ?? 0), c!.currency)}</td>}
-              <td>{new Date(s.updated_at).toLocaleString()}</td>
+              <td>{new Date(s.updated_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</td>
               <td><DeleteButton path={`/v1/sessions/${s.id}`} confirmText="Delete this session and its trace?" /></td>
             </tr>
           ))}
