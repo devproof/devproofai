@@ -18,7 +18,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // plane is down. Server-rendered ⇒ no flash, no inline blocking script.
   const [wsRes, setRes, verRes] = await Promise.allSettled([
     wsGet<{ workspaces: any[] }>("/v1/workspaces"),
-    wsGet<{ appearance?: { theme?: string }; serving?: { localEnabled?: boolean } }>("/v1/settings"),
+    wsGet<{ appearance?: { theme?: string; timeFormat?: string }; serving?: { localEnabled?: boolean } }>("/v1/settings"),
     wsGet<{ version: string }>("/v1/version"),
   ]);
 
@@ -26,6 +26,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   if (wsRes.status === "fulfilled" && wsRes.value?.workspaces?.length) workspaces = wsRes.value.workspaces;
 
   const theme = (setRes.status === "fulfilled" && setRes.value?.appearance?.theme) || "system";
+  const timefmt = (setRes.status === "fulfilled" && setRes.value?.appearance?.timeFormat) || "browser";
   const localServing = setRes.status === "fulfilled" ? setRes.value?.serving?.localEnabled !== false : true;
 
   // Version footer (reproducible-builds spec 2026-07-18): CP version from the
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // Cookie may point at a deleting/deleted workspace — fall back to default.
   const current = workspaces.some((w) => w.id === cookie && w.status !== "deleting") ? cookie : "wrkspc_default";
   return (
-    <html lang="en" data-theme={theme} className={`${sans.variable} ${cond.variable} ${mono.variable}`}>
+    <html lang="en" data-theme={theme} data-timefmt={timefmt} className={`${sans.variable} ${cond.variable} ${mono.variable}`}>
       <body>
         <div className="shell">
           <Nav workspaces={workspaces} current={current} version={version} localServing={localServing} />
