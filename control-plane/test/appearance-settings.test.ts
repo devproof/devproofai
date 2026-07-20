@@ -140,11 +140,12 @@ test("PUT /v1/settings persists theme when provided, leaves it when omitted", { 
     assert.equal(omitted.json().appearance.theme, "light");
     assert.deepEqual(await repo.getAppearance(), { theme: "light", timeFormat: "iso" });
 
-    // An empty `appearance` object is a no-op, not a reset to "system" —
+    // An empty `appearance` object is a no-op, not a reset to defaults —
     // mirrors the limits precedent (agents-api.test.ts). This is the case that
-    // pins the guard to `?.theme !== undefined`: a guard of `appearance !==
-    // undefined` would wrongly reset the stored theme here, and every other
-    // test in this file would still pass.
+    // pins the guard to "a field is explicitly present" (`ab?.theme !==
+    // undefined || ab?.timeFormat !== undefined`): with neither field set,
+    // nothing may be written, and every other test in this file would still
+    // pass if it were.
     const empty = await app.inject({
       method: "PUT", url: "/v1/settings",
       payload: { costs: {}, appearance: {} },
