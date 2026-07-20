@@ -116,11 +116,29 @@ test("PUT /v1/settings persists theme when provided, leaves it when omitted", { 
     assert.equal(ok.json().appearance.theme, "dark");
     assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
 
+    // Merge-when-provided (spec 2026-07-20): a timeFormat-only body keeps the
+    // stored theme, and a theme-only body keeps the stored timeFormat — the
+    // old replace-on-theme handler would reset timeFormat to "browser" here.
+    const fmtOnly = await app.inject({
+      method: "PUT", url: "/v1/settings",
+      payload: { costs: {}, appearance: { timeFormat: "iso" } },
+    });
+    assert.equal(fmtOnly.statusCode, 200);
+    assert.deepEqual(fmtOnly.json().appearance, { theme: "dark", timeFormat: "iso" });
+
+    const themeOnly = await app.inject({
+      method: "PUT", url: "/v1/settings",
+      payload: { costs: {}, appearance: { theme: "light" } },
+    });
+    assert.equal(themeOnly.statusCode, 200);
+    assert.deepEqual(themeOnly.json().appearance, { theme: "light", timeFormat: "iso" });
+    assert.deepEqual(await repo.getAppearance(), { theme: "light", timeFormat: "iso" });
+
     // A body without `appearance` must NOT reset the stored theme.
     const omitted = await app.inject({ method: "PUT", url: "/v1/settings", payload: { costs: {} } });
     assert.equal(omitted.statusCode, 200);
-    assert.equal(omitted.json().appearance.theme, "dark");
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
+    assert.equal(omitted.json().appearance.theme, "light");
+    assert.deepEqual(await repo.getAppearance(), { theme: "light", timeFormat: "iso" });
 
     // An empty `appearance` object is a no-op, not a reset to "system" —
     // mirrors the limits precedent (agents-api.test.ts). This is the case that
@@ -132,8 +150,8 @@ test("PUT /v1/settings persists theme when provided, leaves it when omitted", { 
       payload: { costs: {}, appearance: {} },
     });
     assert.equal(empty.statusCode, 200);
-    assert.equal(empty.json().appearance.theme, "dark");
-    assert.deepEqual(await repo.getAppearance(), { theme: "dark", timeFormat: "browser" });
+    assert.equal(empty.json().appearance.theme, "light");
+    assert.deepEqual(await repo.getAppearance(), { theme: "light", timeFormat: "iso" });
   } finally {
     await repo.putAppearance(beforeTheme);
     cleanup();

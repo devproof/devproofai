@@ -1133,12 +1133,17 @@ export async function registerAgentRoutes(
       maintenance = mergeMaintenanceSettings(maintenance, b.maintenance);
       await repo.putMaintenanceSettings(maintenance);
     }
-    // Persist appearance only when the body carries an explicit theme (same
-    // convention as limits/maintenance): an omitted block leaves the stored theme.
+    // Persist appearance only when the body carries an explicit field, merging
+    // the provided fields over the stored block (maintenance idiom) — a
+    // theme-only body must not reset timeFormat to its default, and vice versa.
+    // An omitted or empty block leaves everything untouched.
     let appearance = await repo.getAppearance();
-    const ab = b?.appearance as { theme?: unknown } | undefined;
-    if (ab?.theme !== undefined) {
-      appearance = normalizeAppearance(ab);
+    const ab = b?.appearance as { theme?: unknown; timeFormat?: unknown } | undefined;
+    if (ab?.theme !== undefined || ab?.timeFormat !== undefined) {
+      appearance = normalizeAppearance({
+        theme: ab.theme !== undefined ? ab.theme : appearance.theme,
+        timeFormat: ab.timeFormat !== undefined ? ab.timeFormat : appearance.timeFormat,
+      });
       await repo.putAppearance(appearance);
     }
     return { costs, limits, maintenance, appearance };
