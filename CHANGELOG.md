@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.1.4 — 2026-07-21
+
+### Changed
+- Released artifacts are tagged with **bare semver**: the chart and the five
+  images are now `0.1.4`, not `v0.1.4` (git tags keep the `v`). Helm's OCI
+  version resolution only sees strict-semver tags, so the old chart tags were
+  invisible to it — `helm pull`/`helm install` without an exact `--version`
+  failed with "unable to locate any tags". Install commands change to
+  `--version 0.1.4`.
+- The bundled MinIO is pulled from `quay.io/minio/minio` (same release, no
+  longer mirrored) — registry allowlists need to permit `quay.io`.
+
+### Added
+- `THIRD-PARTY-NOTICES.md`: what the project redistributes (mirrored images,
+  upstream baked into images built here, the packaged LLMkube subchart), with
+  each component's upstream reference, source URL, and license — kept separate
+  from components users pull themselves at install time.
+- `values.yaml` documents that the bundled PostgreSQL and MinIO are a
+  local/demo convenience, and which values replace each with a managed
+  service.
+- README: the agent-session screenshot is now a live recording.
+
 ## v0.1.3 — 2026-07-20
 
 ### Added
