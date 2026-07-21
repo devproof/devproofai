@@ -95,6 +95,8 @@ agents:
     nodeSelector: {}
     tolerations: []
 
+# Bundled for local/demo installs only. In production set enabled=false and
+# point externalDatabase at a managed Postgres.
 postgres:
   enabled: true
   image:
@@ -133,10 +135,13 @@ externalDatabase:
   existingSecret: ""   # key: password (must exist before install)
   sslMode: ""          # e.g. require
 
+# Bundled for local/demo installs only. In production set enabled=false and
+# point s3 at S3 or any S3-compatible store.
 minio:
   enabled: true
   image:
-    repository: ghcr.io/devproof/devproofai-minio
+    # AGPL: never mirror to ghcr.io/devproof — see THIRD-PARTY-NOTICES.md.
+    repository: quay.io/minio/minio
     tag: RELEASE.2025-09-07T16-13-09Z
     pullPolicy: IfNotPresent
   resources:

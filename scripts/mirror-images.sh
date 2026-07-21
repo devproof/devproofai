@@ -15,8 +15,15 @@ set -euo pipefail
 REGISTRY="${REGISTRY:-ghcr.io/devproof}"
 
 # upstream reference -> mirror name:tag (tag = what values.yaml pins)
+#
+# NOT mirrored: minio. It is AGPLv3, and mirroring makes us a REDISTRIBUTOR
+# (AGPL §4/§6: license text, copyright notices and directions to the
+# Corresponding Source must accompany the copy — and the source annotation
+# this script stamps would point at devproofai, which carries none of it).
+# values.yaml pulls it from quay.io/minio/minio instead — MinIO's own
+# registry, no pull limits, so the mirror bought nothing. Weigh the licence
+# before adding any copyleft image here; see THIRD-PARTY-NOTICES.md.
 MIRRORS=(
-  "minio/minio:RELEASE.2025-09-07T16-13-09Z            devproofai-minio:RELEASE.2025-09-07T16-13-09Z"
   "postgres:17.10-alpine                               devproofai-postgres:17.10-alpine"
   "ubuntu/squid:6.13-25.04_edge                        devproofai-squid:6.13"
   "ghcr.io/defilantech/llmkube-controller:0.9.7        devproofai-llmkube-controller:0.9.7"
@@ -25,7 +32,7 @@ MIRRORS=(
 # The source annotation makes GHCR list the package under the devproofai
 # repo (the upstream images' own source labels point at THEIR repos).
 # buildx applies it only when the upstream is an OCI index (postgres,
-# llmkube-controller); for Docker-format manifest lists (minio, squid) it is
+# llmkube-controller); for a Docker-format manifest list (squid) it is
 # silently dropped, so mirror-annotate.py re-PUTs those as annotated OCI
 # indexes afterwards. Both steps are idempotent — every run reasserts the
 # link instead of relying on a one-off manual fix.
@@ -40,4 +47,4 @@ for entry in "${MIRRORS[@]}"; do
 done
 
 echo "Done. Verify anonymously with:"
-echo "  docker manifest inspect $REGISTRY/devproofai-minio:RELEASE.2025-09-07T16-13-09Z"
+echo "  docker manifest inspect $REGISTRY/devproofai-postgres:17.10-alpine"

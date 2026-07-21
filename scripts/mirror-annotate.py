@@ -3,7 +3,7 @@
 so GHCR lists the package under the devproofai repo.
 
 `docker buildx imagetools create --annotation` silently drops the annotation
-when the upstream is a DOCKER-format manifest list (minio, squid): Docker's
+when the upstream is a DOCKER-format manifest list (squid): Docker's
 list schema has no annotations field, and buildx matches the children's
 format, so the copy comes out unannotated no matter what is passed. An OCI
 index MAY reference Docker-format child manifests, so re-PUTting just the

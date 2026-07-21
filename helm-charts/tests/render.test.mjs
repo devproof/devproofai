@@ -64,7 +64,10 @@ test("postgres persistence knobs render", () => {
 
 test("bundled minio renders with generated secret", () => {
   const out = render();
-  assert.ok(out.includes("image: ghcr.io/devproof/devproofai-minio:"));
+  // Pulled from MinIO's own registry, never a ghcr.io/devproof mirror: MinIO
+  // is AGPL and mirroring it would make us a redistributor (THIRD-PARTY-NOTICES.md).
+  assert.ok(out.includes("image: quay.io/minio/minio:"));
+  assert.ok(!out.includes("devproofai-minio"));
   assert.ok(out.includes("MINIO_ROOT_USER:"));
   assert.ok(out.includes("name: devproof-minio-data"));
 });
