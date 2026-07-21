@@ -83,7 +83,8 @@ test("gateway renders deployment, configmap with both keys, service, hpa", () =>
   assert.ok(out.includes("custom_callbacks.py: |"));
   assert.ok(out.includes("config.yaml: |"));
   // repo wired from values; the tag is release-bumped, so don't pin it
-  assert.ok(/image: ghcr\.io\/devproof\/devproofai-gateway:v\d/.test(out));
+  // (bare semver since 2026-07-21 — no v prefix on published artifacts)
+  assert.ok(/image: ghcr\.io\/devproof\/devproofai-gateway:\d/.test(out));
   assert.ok(out.includes("checksum/callbacks:"));
   assert.ok(/kind: HorizontalPodAutoscaler[\s\S]*minReplicas: 2/.test(out));
 });
@@ -127,7 +128,7 @@ test("controlplane renders with minio-backed S3 env and namespace envs", () => {
   assert.ok(out.includes("name: devproof-controlplane"));
   assert.ok(/DEVPROOF_S3_ENDPOINT[\s\S]*?http:\/\/minio\.devproof\.svc\.cluster\.local:9000/.test(out));
   assert.ok(out.includes("DEVPROOF_AGENTS_NAMESPACE"));
-  assert.ok(/DEVPROOF_RUNNER_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-session-runner:v\d/.test(out));
+  assert.ok(/DEVPROOF_RUNNER_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-session-runner:\d/.test(out));
   assert.ok(/DEVPROOF_EGRESS_PROXY_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-squid:6\.13/.test(out));
   assert.ok(out.includes("DEVPROOF_EGRESS_PROXY_POD"));
   assert.ok(/HOST[\s\S]*?0\.0\.0\.0/.test(out));
