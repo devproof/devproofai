@@ -54,8 +54,10 @@ jobs:
           REVISION: ${{ github.sha }}
           REGISTRY: ghcr.io/devproof
         # No floating `latest` tag — images are referenced by pinned version
-        # tags only (user decision 2026-07-19).
-        run: docker buildx bake --set "*.platform=linux/amd64,linux/arm64" --push
+        # tags only (user decision 2026-07-19). Artifacts are tagged BARE
+        # semver (0.1.3; git tag keeps the v — decision 2026-07-21), so strip
+        # the prefix for the bake (tags + DEVPROOF_VERSION + oci labels).
+        run: VERSION="${VERSION#v}" docker buildx bake --set "*.platform=linux/amd64,linux/arm64" --push
       - uses: azure/setup-helm@v5   # v4 targets Node 20 (deprecated on runners)
       # dependency build resolves Chart.lock but still needs the repo
       # definition (fresh runners have no helm repos).
@@ -69,8 +71,13 @@ jobs:
       - run: scripts/patch-llmkube-schema.sh
       - name: package + push chart (ghcr.io/devproof/devproofai-helm)
         # The OCI repo name comes from the chart name in Chart.yaml
-        # (devproofai-helm); the version overrides Chart.yaml's at package time.
+        # (devproofai-helm); the version overrides Chart.yaml's at package
+        # time. BARE semver on purpose: helm's OCI tag listing only sees
+        # strict-semver tags, so a v-prefixed chart tag breaks version
+        # resolution (`helm pull` without an exact --version — verified
+        # against GHCR 2026-07-21).
         run: |
+          bare="${VERSION#v}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
-          helm package helm-charts --version "$VERSION" --app-version "$VERSION" -d /tmp
-          helm push "/tmp/devproofai-helm-$VERSION.tgz" oci://ghcr.io/devproof
+          helm package helm-charts --version "$bare" --app-version "$bare" -d /tmp
+          helm push "/tmp/devproofai-helm-$bare.tgz" oci://ghcr.io/devproof

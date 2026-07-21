@@ -2,8 +2,13 @@
 # (Chart.yaml version/appVersion, the five devproof image tags in values.yaml,
 # both package.json+lock versions, the README helm-install examples), commits
 # the bump on the dispatched branch, then FORCE-moves the git tag onto that
-# commit (an existing tag is overwritten). It does NOT trigger the release:
-# a tag pushed with GITHUB_TOKEN never fires other workflows' push triggers
+# commit (an existing tag is overwritten). The GIT TAG keeps the v prefix
+# (v0.1.3 — version.sh matches "v*"); every published ARTIFACT is stamped
+# BARE semver (0.1.3): image tags, chart version, README --version. Helm
+# requires strict-semver OCI tags (a v-prefixed tag is invisible to its
+# tag listing), and the rest follows for consistency (decision 2026-07-21).
+# It does NOT trigger the release: a tag pushed with GITHUB_TOKEN never
+# fires other workflows' push triggers
 # (GitHub's recursion guard), so after this run, start release.yml by hand
 # from the Actions tab with the tag as the ref (two separate actions on
 # purpose — user decision 2026-07-20).
@@ -39,11 +44,12 @@ jobs:
           # dependency version doesn't match the ^ anchors).
           sed -i -E "s/^version: .+/version: $bare/; s/^appVersion: .+/appVersion: \"$bare\"/" helm-charts/Chart.yaml
           # values.yaml: only the five images this repo builds (the release
-          # bake targets). Third-party MIRRORS also live under
+          # bake targets), tagged BARE (release.yml bakes with the bare
+          # version). Third-party MIRRORS also live under
           # ghcr.io/devproof/devproofai-* (llmkube-controller, postgres,
           # minio, squid, …) — matching the registry prefix would clobber
           # their pinned upstream tags, so match the exact image names.
-          awk -v v="$VERSION" '
+          awk -v v="$bare" '
             /repository:/ { own = ($0 ~ /devproofai-(session-runner|gateway|control-plane|console|operator)[[:space:]]*$/) }
             own && /^[[:space:]]*tag:/ { sub(/tag:.*/, "tag: " v); own = 0 }
             { print }
@@ -52,8 +58,9 @@ jobs:
           # keeps re-runs of an already-bumped version green.
           (cd control-plane && npm version "$bare" --no-git-tag-version --allow-same-version)
           (cd console && npm version "$bare" --no-git-tag-version --allow-same-version)
-          # README helm-install examples reference the released chart version.
-          sed -i -E "s/--version v[0-9][0-9A-Za-z.-]*/--version $VERSION/g" README.md
+          # README helm-install examples reference the released chart version
+          # (bare; the v? in the pattern still matches pre-2026-07-21 stamps).
+          sed -i -E "s/--version v?[0-9][0-9A-Za-z.-]*/--version $bare/g" README.md
           git diff --stat
       - name: commit + push + tag
         run: |
