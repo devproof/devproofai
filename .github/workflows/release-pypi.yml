@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write   # PyPI trusted publishing (OIDC) — no API token secret needed
 
 jobs:
   pypi:
@@ -38,5 +39,4 @@ jobs:
           python -m build python-client
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: python-client/dist
