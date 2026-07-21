@@ -9,7 +9,7 @@ plane** (Anthropic-style agent sessions with tools, skills, memory, wikis and
 credential vaults — running against the models you just deployed, or any
 external API).
 
-## Why
+## AI sovereignty
 
 Running models and agents on your own infrastructure keeps access, cost,
 availability and data under your control. Open-weight models (GLM, Llama,
