@@ -1,4 +1,4 @@
-# Devproof AI
+# DEVPROOF.AI
 
 **Own your scalable AI.** Self-hosted LLM serving + managed agents on Kubernetes.
 
@@ -8,15 +8,6 @@ autoscaling, OpenAI- & Anthropic-compatible endpoints) and a **managed-agents
 plane** (Anthropic-style agent sessions with tools, skills, memory, wikis and
 credential vaults — running against the models you just deployed, or any
 external API).
-
-## AI sovereignty
-
-Running models and agents on your own infrastructure keeps access, cost,
-availability and data under your control. Open-weight models (GLM, Llama,
-Qwen, DeepSeek, …) have closed most of the capability gap with closed APIs —
-what's left is the operational work of serving them and running agent
-workloads on top. Devproof AI packages that into one Kubernetes platform:
-serving, agents, routing and metering, self-hosted and multi-tenant.
 
 ## Features
 
@@ -29,6 +20,12 @@ between messages — sessions checkpoint, resume, interrupt, and survive pod
 failures. Agents work like Anthropic's managed agents, but pointed at models
 you control — local deployments or external APIs (OpenAI, Anthropic,
 OpenRouter, custom endpoints), switchable per request.
+
+![Agent session recorded live](docs/images/agent-session-live.gif)
+
+*An agent session, recorded live — the transcript grows with every thought and
+tool call, tokens and cost tick in real time, the agent delegates to a second
+agent, and the finished result opens as rendered markdown.*
 
 - **Managed subagents.** Agents can delegate work to other agents: a parent
   spawns a full child session via the built-in `Delegate` tool, follows up on
@@ -165,6 +162,15 @@ Runnable examples for every feature area — files, skills, memory, wikis,
 vaults, environments, agents, sessions, tool use, MCP — live in
 [`python-client/examples/`](python-client/examples/README.md).
 
+## AI sovereignty
+
+Running models and agents on your own infrastructure keeps access, cost,
+availability and data under your control. Open-weight models (GLM, Llama,
+Qwen, DeepSeek, …) have closed most of the capability gap with closed APIs —
+what's left is the operational work of serving them and running agent
+workloads on top. DEVPROOF.AI packages that into one Kubernetes platform:
+serving, agents, routing and metering, self-hosted and multi-tenant.
+
 ## Architecture
 
 **Agent execution flow** — every turn runs in an isolated, network-locked
@@ -239,12 +245,6 @@ The dashboard — models serving, agent sessions and live token usage at a
 glance:
 
 ![Dashboard](docs/images/dashboard.png)
-
-An agent session, recorded live — the transcript grows with every thought and
-tool call, tokens and cost tick in real time, the agent delegates to a second
-agent, and the finished result opens as rendered markdown:
-
-![Agent session recorded live](docs/images/agent-session-live.gif)
 
 An LLM wiki — a hierarchical knowledge base with one maintainer agent and any
 number of readers, browsable in the console:
