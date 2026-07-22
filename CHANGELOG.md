@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.6 — unreleased
+
+### Fixed
+- GPU model deployments were stuck in Pending forever: the operator copied
+  `resources.gpu` into the InferenceService as a string, but the LLMkube CRD
+  types it as an integer, so the typed server-side apply rejected every
+  reconcile and the ISVC was never created. The gpu value is now emitted
+  numeric (`cpu`/`memory` stay strings).
+
 ## v0.1.5 — 2026-07-22
 
 ### Fixed

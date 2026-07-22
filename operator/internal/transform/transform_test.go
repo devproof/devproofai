@@ -399,6 +399,29 @@ func TestBuildEngineImageSelection(t *testing.T) {
 	}
 }
 
+func TestBuildResourcesGpuIsNumeric(t *testing.T) {
+	// The LLMkube ISVC CRD types spec.resources.gpu as integer (int32) while
+	// cpu/memory are strings — a string gpu fails the typed server-side apply
+	// ("expected numeric (int or float), got string") and the ISVC is never
+	// created (live bug: gemma-4-12b-it-q4, 2026-07-22).
+	md, pool := fixtures()
+	md.Spec.Resources["gpu"] = "1"
+	_, isvc := Build(md, pool, 1, EngineImages{})
+	res, found, err := unstructured.NestedMap(isvc.Object, "spec", "resources")
+	if err != nil || !found {
+		t.Fatalf("spec.resources missing: found=%v err=%v", found, err)
+	}
+	if g, ok := res["gpu"].(int64); !ok || g != 1 {
+		t.Fatalf("resources.gpu must be numeric for the ISVC CRD, got %T %v", res["gpu"], res["gpu"])
+	}
+	if c, ok := res["cpu"].(string); !ok || c != "2" {
+		t.Fatalf("resources.cpu must stay a string, got %T %v", res["cpu"], res["cpu"])
+	}
+	if m, ok := res["memory"].(string); !ok || m != "2Gi" {
+		t.Fatalf("resources.memory must stay a string, got %T %v", res["memory"], res["memory"])
+	}
+}
+
 func TestBuildImagePullSecret(t *testing.T) {
 	md, pool := fixtures()
 	_, isvc := Build(md, pool, 1, EngineImages{PullSecret: "ghcr-pull"})

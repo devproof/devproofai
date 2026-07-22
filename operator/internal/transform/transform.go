@@ -107,6 +107,14 @@ func Build(md *v1alpha1.ModelDeployment, pool *v1alpha1.ModelPool, replicas int3
 	if len(md.Spec.Resources) > 0 {
 		res := map[string]interface{}{}
 		for k, v := range md.Spec.Resources {
+			// The ISVC CRD types resources.gpu as integer (cpu/memory are
+			// strings); a string gpu fails the typed server-side apply.
+			if k == "gpu" {
+				if n, err := strconv.ParseInt(v, 10, 32); err == nil {
+					res[k] = n
+					continue
+				}
+			}
 			res[k] = v
 		}
 		isvcSpec["resources"] = res
