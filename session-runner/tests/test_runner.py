@@ -111,6 +111,31 @@ class PostStripNulTest(unittest.TestCase):
         self.assertNotIn(nul.encode(), data)  # no raw NUL
         self.assertIn(b"beforeafter", data)   # surrounding text survives
 
+    def test_post_strips_nul_bytes_from_dict_keys(self):
+        # jsonb rejects NUL in keys the same as in values, and an MCP tool
+        # result is arbitrary JSON — keys included — so a NUL-bearing key must
+        # be stripped too.
+        sent = {}
+
+        def capture(req, timeout):
+            sent["data"] = req.data
+
+            class Res:
+                def read(self):
+                    return b"{}"
+            return Res()
+
+        import unittest.mock as mock
+        nul = chr(0)
+        body = {"events": [{"type": "tool.result",
+                            "payload": {"a" + nul + "b": "value"}}]}
+        with mock.patch.object(runner.urllib.request, "urlopen", capture):
+            runner.post("/events", body, _sleep=lambda s: None)
+        data = sent["data"]
+        self.assertNotIn(b"\\u0000", data)   # no escaped NUL in the key
+        self.assertNotIn(nul.encode(), data)  # no raw NUL
+        self.assertIn(b'"ab"', data)          # key survives with NUL removed
+
 
 class ExpandMcpHeadersTest(unittest.TestCase):
     def test_expands_placeholder_from_env(self):

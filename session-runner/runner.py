@@ -494,7 +494,7 @@ def _strip_nul(value):
     if isinstance(value, list):
         return [_strip_nul(v) for v in value]
     if isinstance(value, dict):
-        return {k: _strip_nul(v) for k, v in value.items()}
+        return {_strip_nul(k): _strip_nul(v) for k, v in value.items()}
     return value
 
 

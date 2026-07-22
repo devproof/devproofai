@@ -124,6 +124,27 @@ test("appendEvents strips NUL bytes so tool output can't crash the jsonb insert"
   await repo.deleteAgent(ws, agent.id);
 });
 
+test("appendEvents strips NUL bytes from object keys too — MCP results are arbitrary JSON", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const ws = (await repo.createWorkspace(`t-nulkey-${Date.now()}`)).id;
+  const agent = await repo.createAgent(ws, `t-nulkey-${Date.now()}`, { routing: "qwen05b-dp", tools: ["Bash"] });
+  const session = await repo.createSession(ws, agent.id, "hello");
+
+  // jsonb rejects U+0000 in keys the same as in values (22P05) — an MCP tool
+  // result can carry arbitrary JSON, keys included, so a NUL-bearing key must
+  // be stripped before the insert or the same 500→retry→failed-session chain
+  // as the value case fires.
+  await repo.appendEvents(session.id, [
+    { type: "tool.result", payload: { ["a" + String.fromCharCode(0) + "b"]: "value", is_error: false } },
+  ]);
+
+  const events = await repo.listEvents(session.id);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.ab, "value");
+
+  await repo.deleteAgent(ws, agent.id);
+});
+
 test("gatewayUsage aggregates buckets, totals, and filters", { skip: !available }, async () => {
   const repo = new Repo(pool);
   const ws = await repo.createWorkspace(`wsu-${Date.now()}`); // isolated workspace so reruns don't accumulate
