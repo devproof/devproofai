@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.5 — 2026-07-22
+
+### Fixed
+- Tool output containing a NUL byte failed the whole session — Postgres
+  rejects U+0000 in `jsonb`, so the event insert 500'd and the runner's retry
+  gave up. NULs are now stripped from values and keys on both sides.
+- Console session view could stick on "generating…" after a turn finished.
+  The stream now stays open through `failed`, sends real status pings,
+  reconnects after 45s of silence, and 404s an unknown session. The public
+  `/v1` event stream is unchanged.
+- The Python client's PyPI release failed on a missing OIDC permission.
+- Chart render tests went red on the bare-semver image tags from v0.1.4.
+
+### Changed
+- README: install examples no longer pin a chart version — `helm install`
+  resolves the newest tag now that chart tags are bare semver.
+
 ## v0.1.4 — 2026-07-21
 
 ### Changed
