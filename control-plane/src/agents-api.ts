@@ -1018,7 +1018,7 @@ export async function registerAgentRoutes(
     if (stream !== "1") {
       return { events: await repo.listEvents(id, Number(after ?? 0)) };
     }
-    return streamSessionEvents(req, reply, repo, notify, id, Number(after ?? 0));
+    return streamSessionEvents(req, reply, repo, notify, id, Number(after ?? 0), { console: true });
   });
 
   // Runner callbacks (unauthenticated in phase 1, matches gateway posture).

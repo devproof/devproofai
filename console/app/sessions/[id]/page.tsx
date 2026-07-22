@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { SessionView } from "./trace";
 import { wsGet } from "../../lib/api";
 import { CopyId } from "../../lib/copy-id";
@@ -6,11 +7,15 @@ import { DateTime } from "../../lib/datetime";
 
 export const dynamic = "force-dynamic";
 
+// A 404 here is "no such session in THIS workspace" — render the not-found
+// page, not the error boundary (whose copy blames an unreachable CP).
+const or404 = (e: any): never => { if (e?.status === 404) notFound(); throw e; };
+
 export default async function SessionDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [session, { events }, resources, settings] = await Promise.all([
-    wsGet<any>(`/v1/sessions/${id}`),
-    wsGet<{ events: any[] }>(`/v1/sessions/${id}/events`),
+    wsGet<any>(`/v1/sessions/${id}`).catch(or404),
+    wsGet<{ events: any[] }>(`/v1/sessions/${id}/events`).catch(or404),
     wsGet<any>(`/v1/sessions/${id}/resources`).catch(() => null),
     wsGet<{ costs: any }>("/v1/settings").catch(() => null),
   ]);

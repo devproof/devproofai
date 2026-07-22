@@ -1,7 +1,7 @@
 // Unit test with fakes — no DB. Scripted getSession results drive the loop;
 // the fake notify hub's captured wake fn substitutes for pg NOTIFY.
-// NOTE: the loop's 5s heartbeat setTimeout stays armed after the test
-// resolves, so the process lingers ~5s at suite end — harmless.
+// (The loop's heartbeat setTimeout is unref'd, so armed timers no longer
+// pin the process after the suite resolves.)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -53,4 +53,44 @@ test("unchanged status AND tokens sends no duplicate frame", async () => {
     clearInterval(tick);
   }
   assert.equal(h.chunks.filter((c) => c.startsWith("event: status")).length, 2);
+});
+
+test("console mode: failed keeps streaming (resumable) and heartbeats are ping events", async () => {
+  const h = harness([
+    { status: "failed", tokens_in: 0, tokens_out: 0, turns: 1 },
+    { status: "failed", tokens_in: 0, tokens_out: 0, turns: 1 },       // stays open across failed
+    { status: "completed", tokens_in: 0, tokens_out: 0, turns: 1 },
+  ]);
+  const tick = setInterval(h.wake, 50); // slow tick so the ping write isn't skipped by `pending`
+  try {
+    await streamSessionEvents(h.req, h.reply, h.repo, h.notify, "sesn_test", 0, { console: true });
+  } finally {
+    clearInterval(tick);
+  }
+  const frames = h.chunks.filter((c) => c.startsWith("event: status"));
+  assert.match(frames[0], /"status":"failed"/);
+  assert.match(frames.at(-1)!, /"status":"completed"/);                // survived past failed
+  const pings = h.chunks.filter((c) => c.startsWith("event: ping"));
+  assert.ok(pings.length > 0);                                          // real event, not a comment
+  assert.match(pings[0], /"status":"failed"/);                          // ping carries current status
+  assert.ok(h.chunks.every((c) => !c.startsWith(": ka")));
+  assert.ok(h.chunks.some((c) => c.startsWith("event: end")));          // completed still ends
+});
+
+test("public mode unchanged: failed is terminal, keep-alive stays a comment", async () => {
+  const h = harness([
+    { status: "running", tokens_in: 0, tokens_out: 0, turns: 1 },
+    { status: "failed", tokens_in: 0, tokens_out: 0, turns: 1 },
+  ]);
+  const tick = setInterval(h.wake, 50);
+  try {
+    await streamSessionEvents(h.req, h.reply, h.repo, h.notify, "sesn_test", 0);
+  } finally {
+    clearInterval(tick);
+  }
+  const frames = h.chunks.filter((c) => c.startsWith("event: status"));
+  assert.match(frames.at(-1)!, /"status":"failed"/);
+  assert.ok(h.chunks.some((c) => c.startsWith(": ka")));               // deployed clients' parser contract
+  assert.ok(h.chunks.every((c) => !c.startsWith("event: ping")));
+  assert.ok(h.chunks.some((c) => c.startsWith("event: end")));
 });

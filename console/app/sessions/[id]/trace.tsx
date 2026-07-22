@@ -24,7 +24,7 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
     billedCost: Number(s0.billed_cost ?? 0), turns: Number(s0.turns),
     lastModel: s0.last_model ?? null,
   };
-  const { events, status, totals, live, setStatus } =
+  const { events, status, totals, live, markQueued } =
     useSessionLive(s0.id, { events: initialEvents, status: s0.status, totals: initialTotals });
 
   // Resources (files/outputs/memory/agent) change at turn boundaries — refetch
@@ -115,7 +115,9 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
         method: "POST", headers: { "Content-Type": "application/json", ...wsHeader() },
         body: JSON.stringify({ prompt, ...(attached.length ? { files: attached.map((f) => f.id) } : {}) }),
       });
-      if (res.ok) { setPrompt(""); setAttached([]); setStatus("queued"); setFollow(true); toEnd(); }  // events + status arrive via SSE
+      // events + status arrive via SSE; markQueued bridges the gap until the
+      // new turn's own status frame lands (reconciliation logic in the hook).
+      if (res.ok) { setPrompt(""); setAttached([]); markQueued(status); setFollow(true); toEnd(); }
       else setError(`Send failed: ${(await res.json().catch(() => ({}))).error ?? res.status}`);
     } catch (err) { setError(String(err)); } finally { setBusy(false); }
   }

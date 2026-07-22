@@ -5,6 +5,15 @@ export async function streamSessionEvents(
   req: any, reply: any, repo: any,
   notify: { subscribe(sessionId: string, fn: () => void): () => void } | undefined,
   id: string, after: number,
+  // console mode (the live session view): failed stays open — it is resumable
+  // (the composer shows on failed), so the stream must survive it or a
+  // resume-from-failed turn is invisible until a refresh — and the keep-alive
+  // is a real `ping` event carrying the current status (EventSource can't see
+  // SSE comments; the client watchdog needs visible traffic, and the ridden
+  // status reconciles any diverged client state within one beat). The public
+  // API path keeps the old contract byte-for-byte: deployed python clients
+  // expect `end` at failed and would yield a ping event as a bogus row.
+  opts: { console?: boolean } = {},
 ) {
   // SSE: poll-follow until the session is terminal.
   // Content-Encoding: identity keeps intermediary compressors (Next's proxy
@@ -57,13 +66,17 @@ export async function streamSessionEvents(
           last_model: s.last_model ?? null,
         })}\n\n`);
       }
-      // Terminal ONLY on completed/failed — idle sessions stay subscribed so
+      // Terminal on completed always; failed only on the public path — the
+      // console stays subscribed through idle AND failed (both resumable) so
       // resumes from other tabs/API calls appear without a refresh (spec §1).
-      if (["completed", "failed"].includes(s.status)) { terminal = true; break; }
+      if (s.status === "completed" || (!opts.console && s.status === "failed")) { terminal = true; break; }
       if (pending) continue;  // NOTIFY landed while we were processing — re-check now
-      reply.raw.write(": ka\n\n"); // keep-alive comment — defeats idle proxy timeouts
-      const heartbeat = s.status === "idle" ? 15000 : 5000;
-      await new Promise<void>((r) => { wake = r; setTimeout(r, heartbeat); });
+      if (opts.console) reply.raw.write(`event: ping\ndata: ${JSON.stringify({ status: s.status })}\n\n`);
+      else reply.raw.write(": ka\n\n"); // keep-alive comment — defeats idle proxy timeouts
+      const heartbeat = ["idle", "failed"].includes(s.status) ? 15000 : 5000;
+      // unref: resolved via wake long before it fires; an armed timer would
+      // otherwise pin the test-runner process for up to 15s after the suite.
+      await new Promise<void>((r) => { wake = r; setTimeout(r, heartbeat).unref?.(); });
     }
   } finally {
     unsub();
