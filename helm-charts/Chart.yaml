@@ -5,8 +5,8 @@ apiVersion: v2
 name: devproofai-helm
 description: Devproof AI — self-hosted LLM serving + managed-agents platform
 type: application
-version: 0.1.5
-appVersion: "0.1.5"
+version: 0.1.6
+appVersion: "0.1.6"
 dependencies:
   - name: llmkube
     version: 0.9.7
