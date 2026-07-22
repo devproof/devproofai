@@ -102,6 +102,28 @@ test("appendEvents dedupes on uid — a retried at-least-once batch inserts noth
   await repo.deleteAgent(ws, agent.id);
 });
 
+test("appendEvents strips NUL bytes so tool output can't crash the jsonb insert", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const ws = (await repo.createWorkspace(`t-nul-${Date.now()}`)).id;
+  const agent = await repo.createAgent(ws, `t-nul-${Date.now()}`, { routing: "qwen05b-dp", tools: ["Bash"] });
+  const session = await repo.createSession(ws, agent.id, "hello");
+
+  // Live failure (sesn_5r6qnuuxtwho, 2026-07-22): a Bash tool result carrying a
+  // NUL byte — e.g. `cat /proc/self/attr/current`, which is NUL-terminated —
+  // made the jsonb insert throw "null character not permitted", the route
+  // returned 500, and the runner (retrying an identical payload) failed the
+  // whole session. The NUL must be stripped before the insert.
+  await repo.appendEvents(session.id, [
+    { type: "tool.result", payload: { output: "before" + String.fromCharCode(0) + "after", is_error: false } },
+  ]);
+
+  const events = await repo.listEvents(session.id);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.output, "beforeafter");
+
+  await repo.deleteAgent(ws, agent.id);
+});
+
 test("gatewayUsage aggregates buckets, totals, and filters", { skip: !available }, async () => {
   const repo = new Repo(pool);
   const ws = await repo.createWorkspace(`wsu-${Date.now()}`); // isolated workspace so reruns don't accumulate

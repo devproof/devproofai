@@ -84,6 +84,34 @@ class PostRetryTest(unittest.TestCase):
                 runner.post("/status", {}, attempts=2, _sleep=lambda s: None)
 
 
+class PostStripNulTest(unittest.TestCase):
+    def test_post_strips_nul_bytes_from_body(self):
+        # Postgres jsonb rejects U+0000: a Bash tool result from a NUL-terminated
+        # file (e.g. `cat /proc/self/attr/current`) must not reach the CP as an
+        # escaped NUL and 500 the event insert (live failure sesn_5r6qnuuxtwho,
+        # 2026-07-22 — the identical retried payload failed the whole session).
+        sent = {}
+
+        def capture(req, timeout):
+            sent["data"] = req.data
+
+            class Res:
+                def read(self):
+                    return b"{}"
+            return Res()
+
+        import unittest.mock as mock
+        nul = chr(0)
+        body = {"events": [{"type": "tool.result",
+                            "payload": {"output": "before" + nul + "after"}}]}
+        with mock.patch.object(runner.urllib.request, "urlopen", capture):
+            runner.post("/events", body, _sleep=lambda s: None)
+        data = sent["data"]
+        self.assertNotIn(b"\\u0000", data)   # no escaped NUL
+        self.assertNotIn(nul.encode(), data)  # no raw NUL
+        self.assertIn(b"beforeafter", data)   # surrounding text survives
+
+
 class ExpandMcpHeadersTest(unittest.TestCase):
     def test_expands_placeholder_from_env(self):
         servers = {"c7": {"type": "http", "url": "https://x/mcp",

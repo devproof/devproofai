@@ -18,6 +18,25 @@ const rid = (prefix: string) => `${prefix}_${shortId()}`;
 
 export const DEFAULT_WORKSPACE = "wrkspc_default";
 
+// Postgres jsonb cannot store a NUL (U+0000): the insert throws 22P05
+// ("unsupported Unicode escape sequence") and the route 500s. A runner event
+// can carry one in any string field — e.g. a Bash tool result from
+// `cat /proc/self/attr/current`, which is NUL-terminated — so strip NUL from
+// every string before serializing the payload (live failure sesn_5r6qnuuxtwho,
+// 2026-07-22: the runner retried the identical NUL payload and failed the
+// whole session). Guards every runner version at the last hop before the DB.
+const NUL = String.fromCharCode(0);
+function stripNul(value: unknown): unknown {
+  if (typeof value === "string") return value.includes(NUL) ? value.split(NUL).join("") : value;
+  if (Array.isArray(value)) return value.map(stripNul);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = stripNul(v);
+    return out;
+  }
+  return value;
+}
+
 export interface AgentConfig {
   /** The routing this agent's requests flow through (renamed from `model`,
    *  spec 2026-07-16 amendment — agents reference routings only). */
@@ -280,7 +299,7 @@ export class Repo {
         await client.query(
           `INSERT INTO session_events (session_id, seq, type, payload, tokens_in, tokens_out, duration_ms, uid)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [sessionId, seq, e.type, JSON.stringify(e.payload ?? {}),
+          [sessionId, seq, e.type, JSON.stringify(stripNul(e.payload ?? {})),
            e.tokensIn ?? 0, e.tokensOut ?? 0, e.durationMs ?? 0, e.uid ?? null],
         );
       }

@@ -480,6 +480,24 @@ def run_salvage() -> str | None:
     return step("checkpoint", save_checkpoint)
 
 
+_NUL = chr(0)
+
+
+def _strip_nul(value):
+    """Remove U+0000 from every string in a JSON-able value. Postgres jsonb
+    rejects NUL (error 22P05), so an event payload carrying one — e.g. a Bash
+    tool result read from a NUL-terminated file like /proc/self/attr/current —
+    would 500 the CP event insert, and the identical retried payload fails the
+    whole session (live bug sesn_5r6qnuuxtwho, 2026-07-22)."""
+    if isinstance(value, str):
+        return value.replace(_NUL, "") if _NUL in value else value
+    if isinstance(value, list):
+        return [_strip_nul(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_nul(v) for k, v in value.items()}
+    return value
+
+
 def post(path: str, body: dict, attempts: int = 4, _sleep=time.sleep) -> None:
     """POST to the control plane with retries. A transient network blip (or a
     CP restart) on a single event post must not crash an otherwise-healthy
@@ -487,7 +505,7 @@ def post(path: str, body: dict, attempts: int = 4, _sleep=time.sleep) -> None:
     POST raised URLError errno 101 and took the whole session down."""
     req = urllib.request.Request(
         EVENTS_URL + path,
-        data=json.dumps(body).encode(),
+        data=json.dumps(_strip_nul(body)).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
