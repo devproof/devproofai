@@ -77,7 +77,7 @@ agents:
   # (the CP creates the Jobs, so there is no pullPolicy knob here).
   runnerImage:
     repository: ghcr.io/devproof/devproofai-session-runner
-    tag: 0.1.6
+    tag: 0.1.7
   # Per-environment egress proxy (squid) — a standalone pod the CP creates per
   # environment, so it carries the full component contract. Passed to the CP as
   # DEVPROOF_EGRESS_PROXY_IMAGE + DEVPROOF_EGRESS_PROXY_POD (JSON).
@@ -176,7 +176,7 @@ gateway:
   image:
     # LiteLLM (digest-pinned main-stable) + asyncpg baked in — gateway/Dockerfile.
     repository: ghcr.io/devproof/devproofai-gateway
-    tag: 0.1.6
+    tag: 0.1.7
     pullPolicy: IfNotPresent
   # LiteLLM master key (LITELLM_MASTER_KEY): LiteLLM's own admin credential —
   # without it the proxy boots with a CRITICAL warning and treats everyone as
@@ -216,7 +216,7 @@ controlplane:
   enabled: true
   image:
     repository: ghcr.io/devproof/devproofai-control-plane
-    tag: 0.1.6
+    tag: 0.1.7
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -243,7 +243,7 @@ console:
   enabled: true
   image:
     repository: ghcr.io/devproof/devproofai-console
-    tag: 0.1.6
+    tag: 0.1.7
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -267,7 +267,7 @@ operator:
   enabled: true
   image:
     repository: ghcr.io/devproof/devproofai-operator
-    tag: 0.1.6
+    tag: 0.1.7
     pullPolicy: IfNotPresent
   resources:
     requests:
