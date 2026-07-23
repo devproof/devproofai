@@ -1,6 +1,16 @@
 # Changelog
 
-## v0.1.7 — unreleased
+## v0.1.8 — unreleased
+
+### Changed
+- `helm uninstall` no longer deletes the data PVCs: the bundled Postgres and
+  MinIO claims carry `helm.sh/resource-policy: keep`, so the database and
+  object store survive an accidental uninstall and a reinstall under the same
+  release name picks them up. Delete the PVCs manually to actually drop data.
+  (Model-cache and session-work PVCs are unaffected — they are rebuildable
+  and managed outside Helm.)
+
+## v0.1.7 — 2026-07-23
 
 ### Fixed
 - Model cache said "Ready" while weights were still downloading — the LLMkube

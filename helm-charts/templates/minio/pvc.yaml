@@ -3,6 +3,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: devproof-minio-data
+  annotations:
+    # Survive helm uninstall: this PVC holds the object store (files,
+    # checkpoints, wikis). Helm orphans it instead of deleting; a reinstall
+    # under the same release name reattaches it. Delete manually to actually
+    # drop the data.
+    helm.sh/resource-policy: keep
 spec:
   accessModes: [ReadWriteOnce]
   {{- with .Values.minio.persistence.storageClass }}

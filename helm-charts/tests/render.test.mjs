@@ -56,6 +56,15 @@ test("external database renders url and no bundled postgres", () => {
   assert.strictEqual(url, "postgresql://devproof:xyz@db.example.com:5432/devproof?sslmode=require");
 });
 
+test("data PVCs are kept on uninstall (helm.sh/resource-policy: keep)", () => {
+  const out = render();
+  for (const name of ["devproof-pg-data", "devproof-minio-data"]) {
+    const doc = out.split(/^---$/m).find((d) => d.includes(`name: ${name}`));
+    assert.ok(doc, `${name} PVC rendered`);
+    assert.ok(doc.includes('helm.sh/resource-policy: keep'), `${name} carries keep policy`);
+  }
+});
+
 test("postgres persistence knobs render", () => {
   const out = render(["--set", "postgres.persistence.storageClass=fast", "--set", "postgres.persistence.size=20Gi"]);
   assert.ok(out.includes("storageClassName: fast"));
