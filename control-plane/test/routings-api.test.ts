@@ -23,6 +23,8 @@ const kube: any = {
   writeGatewayConfig: async () => false,
   awaitGatewayRollout: async () => true,
   listCachedModels: async () => [],
+  listServingPods: async () => [],
+  execInPod: async () => "",
 };
 const routingStore = {
   list: () => repo.listRoutings(), get: (n: string) => repo.getRoutingByName(n),

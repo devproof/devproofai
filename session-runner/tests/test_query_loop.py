@@ -332,3 +332,36 @@ class QueryLoopTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelWaitMarkerTest(QueryLoopTest):
+    """model.wait marker (trace follow-up 2026-07-23): a call that survived
+    patient retries yields a SystemMessage("model_wait") BEFORE the assistant
+    message, so the runner can emit a dedicated trace row."""
+
+    def test_wait_marker_yields_before_assistant(self):
+        import importlib
+        from unittest import mock
+        query_mod = importlib.import_module("devproof_runner.query")
+        self.gw.script = [
+            {"status": 503, "message": "reloading", "headers": {"Retry-After": "0"}},
+            {"blocks": [{"type": "text", "text": "back up"}]},
+        ]
+        with mock.patch.object(query_mod, "WAIT_MARKER_MS", 0):
+            messages, err = collect("hi", self.opts())
+        self.assertIsNone(err)
+        waits = [m for m in by_type(messages, SystemMessage) if m.subtype == "model_wait"]
+        self.assertEqual(len(waits), 1)
+        self.assertGreaterEqual(waits[0].data["waited_ms"], 0)
+        self.assertGreater(waits[0].data["wait_ended"], 0.0)
+        # marker precedes the assistant message it waited for
+        idx_wait = messages.index(waits[0])
+        idx_assist = messages.index(by_type(messages, AssistantMessage)[0])
+        self.assertLess(idx_wait, idx_assist)
+
+    def test_no_marker_on_clean_turn(self):
+        self.gw.script = [{"blocks": [{"type": "text", "text": "hello"}]}]
+        messages, err = collect("hi", self.opts())
+        self.assertIsNone(err)
+        self.assertEqual(
+            [m for m in by_type(messages, SystemMessage) if m.subtype == "model_wait"], [])

@@ -786,6 +786,17 @@ async def run_query(prompt: str, options, state: dict) -> tuple[str | None, str 
                     if key in message.data:
                         payload[key] = message.data[key]
                 emit("session.init", payload)
+            elif message.subtype == "model_wait":
+                # Dedicated trace row: time spent waiting for the model to
+                # deploy/scale (patient retries). Stamped at the WAIT-END
+                # offset — the console derives row durations from deltas
+                # between consecutive offsets, so this row absorbs the wait
+                # and the following step shows pure generation time.
+                # max(1, …): emit() treats duration_ms=0 as "stamp now".
+                offset_ms = max(1, int((message.data.get("wait_ended", 0.0) - START) * 1000))
+                emit("model.wait",
+                     {"seconds": round(message.data.get("waited_ms", 0) / 1000)},
+                     duration_ms=offset_ms)
         elif isinstance(message, AssistantMessage):
             for block in message.content:
                 kind = type(block).__name__

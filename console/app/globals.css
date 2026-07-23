@@ -32,6 +32,7 @@
   --mcp:  light-dark(#7b5bd6, #a98cf0);
   --skill: light-dark(#1e7d4f, #4fc088);
   --subagent: light-dark(#0f766e, #2dd4bf);
+  --wait: light-dark(#9a6700, #d4a72c);
   /* Chart series pair (validated: lightness band, chroma, CVD ΔE 60+, ≥3:1
      on --panel). Cool blueprint pair — the orange accent stays out of data. */
   --chart1: light-dark(#1e5bc6, #4c8dff);
@@ -520,6 +521,11 @@ button.namebtn:hover { background: none; color: var(--blue); text-decoration-thi
 .trow-chip.subagent { color: var(--subagent);
   background: color-mix(in srgb, var(--subagent) 12%, transparent);
   border-color: color-mix(in srgb, var(--subagent) 45%, var(--line)); }
+/* model.wait rows: time spent waiting for a model deploy/scale-up (runner
+   patient retries) — amber, so it reads as "infra pause", not agent work. */
+.trow-chip.wait { color: var(--wait);
+  background: color-mix(in srgb, var(--wait) 12%, transparent);
+  border-color: color-mix(in srgb, var(--wait) 45%, var(--line)); }
 pre.block.block-error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
   background: color-mix(in srgb, var(--bad) 7%, var(--paper)); }
 .trow.thinking .trow-title { color: var(--muted); font-style: italic; }

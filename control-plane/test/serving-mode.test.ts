@@ -25,6 +25,7 @@ function throwingStore(): any {
     list: boom("list"), get: boom("get"), create: boom("create"),
     patch: boom("patch"), delete: boom("delete"),
     listCachedModels: boom("listCachedModels"), deleteCachedModel: boom("deleteCachedModel"),
+    listServingPods: boom("listServingPods"), execInPod: boom("execInPod"),
     writeGatewayConfig: async () => false,
     awaitGatewayRollout: async () => true,
     writeProviderKey: async () => {}, deleteProviderKey: async () => {},

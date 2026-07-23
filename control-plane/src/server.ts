@@ -4,6 +4,7 @@ import { CatalogEntry, resolveDeployment, DeploymentRequest } from "./catalog.ts
 import { buildGatewayConfig, envKeyFor, newlyRouted } from "./gateway-config.ts";
 import { fetchPeakThroughput, fetchServingMetrics, observedByCatalogId } from "./metrics.ts";
 import { validateRouting, reachableLocalTargets, reachableTargets, ROUTING_NAME, type RoutingSpec } from "./routing-rules.ts";
+import { cacheRows, progressPct } from "./cache-rows.ts";
 import type { KubeStore } from "./kubestore.ts";
 import { SERVING_NAMESPACE } from "./namespaces.ts";
 import { localServingEnabled } from "./serving-mode.ts";
@@ -259,15 +260,22 @@ export function buildServer(
 
   app.get("/v1/cache", async (req, reply) => {
     if (localGate(reply)) return reply;
-    const models = await store.listCachedModels();
-    const cache = models.map((m: any) => ({
-      name: m.metadata.name,
-      source: m.spec?.source,
-      size: m.status?.size ?? null,
-      phase: m.status?.phase ?? "Unknown",
-      created: m.metadata.creationTimestamp,
+    const [models, pods] = await Promise.all([
+      store.listCachedModels(),
+      store.listServingPods("inference.llmkube.dev/model").catch(() => []),
+    ]);
+    const { rows: all, downloading } = cacheRows(models, pods);
+    // Percentage via one-shot exec, downloading models only (typically 0-1).
+    // Any failure degrades to Downloading-without-number, never an error.
+    await Promise.all(downloading.map(async (d) => {
+      try {
+        const out = await store.execInPod(d.pod, "model-downloader",
+          ["sh", "-c", 'wc -c < "$MODEL_PATH"']);
+        const row = all.find((r) => r.name === d.name);
+        if (row) row.progress = progressPct(Number(out.trim()), d.total);
+      } catch { /* degrade */ }
     }));
-    const { rows, count, offset } = paged(cache, req);
+    const { rows, count, offset } = paged(all, req);
     return { cache: rows, count, offset };
   });
 

@@ -24,7 +24,7 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
     billedCost: Number(s0.billed_cost ?? 0), turns: Number(s0.turns),
     lastModel: s0.last_model ?? null,
   };
-  const { events, status, totals, live, markQueued } =
+  const { events, status, totals, live, markQueued, modelState } =
     useSessionLive(s0.id, { events: initialEvents, status: s0.status, totals: initialTotals });
 
   // Resources (files/outputs/memory/agent) change at turn boundaries — refetch
@@ -87,10 +87,15 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
       return { pending: true, label: String(lastCall?.payload?.tool ?? "tool"),
                since: lastCall?.created_at ?? tail.events[0].created_at };
     }
+    // A non-ready LOCAL model outranks the generic labels: the turn is
+    // stalled on the model, not the LLM thinking (externals resolve null
+    // and keep the defaults — they have no deploy/scale lifecycle).
+    const modelWaiting = modelState != null && modelState !== "ready";
     return { pending: false,
-             label: status === "queued" ? "starting…" : "generating…",
+             label: modelWaiting ? "model deploying / scaling up…"
+                  : status === "queued" ? "starting…" : "generating…",
              since: allEvents.at(-1)?.created_at ?? s0.created_at };
-  }, [live, status, rows, allEvents, s0.created_at]);
+  }, [live, status, rows, allEvents, s0.created_at, modelState]);
 
   function selectRow(seq: number) { setSelectedSeq(seq); setPanel(null); }
   function openPanel(p: Exclude<PanelId, null>) { setPanel(p); setSelectedSeq(null); }

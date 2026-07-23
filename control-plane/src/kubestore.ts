@@ -1,5 +1,6 @@
 // KubeStore: thin seam over the Kubernetes API so routes stay unit-testable.
 import * as k8s from "@kubernetes/client-node";
+import { Writable } from "node:stream";
 import { GATEWAY_NAMESPACE, SERVING_NAMESPACE } from "./namespaces.ts";
 
 const GROUP = "serving.devproof.ai";
@@ -28,6 +29,11 @@ export interface KubeStore {
   writeProviderKey(entryKey: string, value: string): Promise<void>;
   /** Remove one entry of the gateway-provider-keys Secret. */
   deleteProviderKey(entryKey: string): Promise<void>;
+  /** Pods in the serving namespace matching a label selector. */
+  listServingPods(labelSelector: string): Promise<any[]>;
+  /** One-shot exec in a pod container; returns captured stdout.
+   *  Only call on pods that are NOT Failed/Succeeded (websocket 500). */
+  execInPod(pod: string, container: string, command: string[]): Promise<string>;
 }
 
 export function realKubeStore(): KubeStore {
@@ -160,6 +166,23 @@ export function realKubeStore(): KubeStore {
       } catch (err: any) {
         if (err?.code !== 404) throw err;
       }
+    },
+    async listServingPods(labelSelector) {
+      const res: any = await core.listNamespacedPod({ namespace: SERVING_NAMESPACE, labelSelector });
+      return res.items ?? [];
+    },
+    async execInPod(pod, container, command) {
+      let out = "";
+      const sink = new Writable({ write(chunk, _enc, cb) { out += chunk.toString(); cb(); } });
+      const exec = new k8s.Exec(kc);
+      await new Promise<void>((resolve, reject) => {
+        exec.exec(SERVING_NAMESPACE, pod, container, command, sink, sink, null, false,
+          (status) => (status?.status === "Success"
+            ? resolve()
+            : reject(new Error(status?.message ?? "exec failed"))),
+        ).catch(reject);
+      });
+      return out;
     },
   };
 }

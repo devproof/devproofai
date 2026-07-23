@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import time
 from dataclasses import dataclass, field
 
 import anyio
@@ -20,6 +21,23 @@ from .types import TextBlock, ThinkingBlock, ToolUseBlock
 
 RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
 MAX_ATTEMPTS = 4
+
+# Patient retries (spec 2026-07-23, amended 2026-07-23 after a live outage):
+# a gateway 503 means "the model is coming back — wait" (hold-cap expiry,
+# rolling config reload, model still loading), and a connect-level failure
+# means no request was consumed. Both retry on a TIME budget instead of an
+# attempt count, so a session waits out a model rollout instead of failing
+# the turn. Other retryables keep MAX_ATTEMPTS.
+#
+# The 503 trigger is the STATUS ITSELF, not the presence of a Retry-After
+# header: wire probes proved LiteLLM's /v1/messages (the Messages-API bridge)
+# surface drops the Retry-After response header entirely (it IS present on
+# /chat/completions), and the runner only ever calls /v1/messages. So a
+# header-gated trigger can never fire on this platform and every 503 stayed
+# attempt-bounded (~15s) — turns died mid-outage. Every gateway 503 here is a
+# transient hold/reload/unavailable state, so the status alone is the signal;
+# the header, when present, only refines the delay.
+PATIENT_WINDOW = float(os.environ.get("DEVPROOF_SDK_PATIENT_RETRY", "1800"))
 
 
 def parse_custom_headers(raw: str) -> dict[str, str]:
@@ -38,6 +56,13 @@ class ApiResponse:
     stop_reason: str | None = None
     usage: dict = field(default_factory=dict)
     model: str = ""
+    # Wait accounting (trace follow-up 2026-07-23): time spent in the retry
+    # loop before the attempt that succeeded (0 = clean first try), and the
+    # monotonic timestamp of that attempt's start — the moment the model was
+    # back up. Lets the runner stamp a dedicated model.wait trace row so
+    # deploy/scale time is not misread as generation time.
+    waited_ms: int = 0
+    wait_ended: float = 0.0
 
 
 class _BlockBuilder:
@@ -115,21 +140,57 @@ class MessagesClient:
             body["system"] = system
         if tools:
             body["tools"] = tools
-        last_err: Exception | None = None
-        for attempt in range(MAX_ATTEMPTS):
-            if attempt:
+        last_err: APIError | None = None
+        patient = False
+        # Two independent budgets: patient iterations (Retry-After 503s, or a
+        # connect-level failure) are bounded purely by PATIENT_WINDOW time and
+        # never touch bounded_attempts, so a run of patient retries can't eat
+        # into the MAX_ATTEMPTS budget a later non-patient retryable needs.
+        bounded_attempts = 0
+        entry = time.monotonic()
+        deadline = entry + PATIENT_WINDOW
+        while True:
+            if last_err is not None:
                 # Jitter: hundreds of session pods retrying a gateway blip must
-                # not re-arrive in lockstep.
-                await anyio.sleep(2 ** attempt + random.uniform(0, 1))
+                # not re-arrive in lockstep. EVERY patient iteration (503s and
+                # connect-level failures alike) uses the patient delay —
+                # Retry-After (capped) when parsed, else a fixed 5s fallback —
+                # never the exponential formula, or a run of patient connect
+                # errors (no status, no retry_after) collapses to the ~1s
+                # bounded-attempts floor for the whole PATIENT_WINDOW.
+                if patient:
+                    delay = 5.0 + random.uniform(0, 1)
+                    if last_err.retry_after is not None:
+                        delay = min(last_err.retry_after, 30.0) + random.uniform(0, 1)
+                else:
+                    delay = 2 ** min(bounded_attempts, 4) + random.uniform(0, 1)
+                await anyio.sleep(delay)
             try:
-                return await self._stream_once(body)
+                attempt_start = time.monotonic()
+                resp = await self._stream_once(body)
+                if last_err is not None:
+                    resp.waited_ms = int((attempt_start - entry) * 1000)
+                    resp.wait_ended = attempt_start
+                return resp
             except APIError as err:
                 if not err.retryable:
                     raise
                 last_err = err
+                # 503 alone is the patient trigger (see PATIENT_WINDOW comment
+                # above) — Retry-After is a delay refinement only, not a gate.
+                patient = err.status == 503
             except httpx.HTTPError as err:
                 last_err = APIError(f"connection error: {err}", retryable=True)
-        raise last_err  # type: ignore[misc]
+                # No response consumed -> always safe to resend.
+                patient = isinstance(err, (httpx.ConnectError, httpx.ConnectTimeout,
+                                           httpx.RemoteProtocolError))
+            if patient:
+                if time.monotonic() >= deadline:
+                    raise last_err
+            else:
+                bounded_attempts += 1
+                if bounded_attempts >= MAX_ATTEMPTS:
+                    raise last_err
 
     async def _stream_once(self, body: dict) -> ApiResponse:
         async with self._client.stream("POST", "/v1/messages", json=body) as res:
@@ -139,9 +200,15 @@ class MessagesClient:
                     detail = json.loads(raw).get("error", {}).get("message") or raw
                 except (json.JSONDecodeError, AttributeError):
                     detail = raw
+                ra = res.headers.get("retry-after")
+                try:
+                    retry_after = float(ra) if ra is not None else None
+                except ValueError:
+                    retry_after = None
                 raise APIError(f"API Error: {res.status_code} {detail}"[:4000],
                                status=res.status_code,
-                               retryable=res.status_code in RETRYABLE_STATUS)
+                               retryable=res.status_code in RETRYABLE_STATUS,
+                               retry_after=retry_after)
             return await self._parse_sse(res)
 
     async def _parse_sse(self, res: httpx.Response) -> ApiResponse:

@@ -82,6 +82,8 @@ class MockGateway:
                         "type": "invalid_request_error", "message": entry.get("message", "boom")}})
                     self.send_response(entry["status"])
                     self.send_header("Content-Type", "application/json")
+                    for name, value in (entry.get("headers") or {}).items():
+                        self.send_header(name, value)
                     self.end_headers()
                     self.wfile.write(payload.encode())
                     return

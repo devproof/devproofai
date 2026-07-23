@@ -16,6 +16,9 @@ export function useSessionLive(id: string, initial: { events: LiveEvent[]; statu
   const [events, setEvents] = useState<LiveEvent[]>(initial.events);
   const [status, setStatus] = useState(initial.status);
   const [totals, setTotals] = useState<Totals>(initial.totals);
+  // Serving target's model_routing state ('ready'|'waking'|'idle'; null =
+  // external/unknown). Drives the "model deploying / scaling up" label.
+  const [modelState, setModelState] = useState<string | null>(null);
   const seqRef = useRef(initial.events.at(-1)?.seq ?? 0);
   const statusRef = useRef(initial.status);
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -44,6 +47,7 @@ export function useSessionLive(id: string, initial: { events: LiveEvent[]; statu
         setTotals({ tokensIn: s.tokens_in, tokensOut: s.tokens_out,
                     billedCost: Number(s.billed_cost ?? 0), turns: s.turns,
                     lastModel: s.last_model ?? null });
+        if ("model_state" in s) setModelState(s.model_state ?? null);
       });
       // Server heartbeat (≤15s cadence). It carries the current status, so
       // client state that diverged from the server (optimistic writes, a
@@ -52,6 +56,7 @@ export function useSessionLive(id: string, initial: { events: LiveEvent[]; statu
         lastBeat = Date.now();
         const p = JSON.parse((m as MessageEvent).data);
         if (p.status) setStatus(p.status);
+        if ("model_state" in p) setModelState(p.model_state ?? null);
       });
       es.addEventListener("end", () => { closed = true; es?.close(); });
       es.onerror = () => {                                  // recreate with the latest seq
@@ -84,5 +89,5 @@ export function useSessionLive(id: string, initial: { events: LiveEvent[]; statu
   const markQueued = (before: string) =>
     setStatus((s) => (["idle", "failed", before].includes(s) ? "queued" : s));
 
-  return { events, status, totals, live, markQueued };
+  return { events, status, totals, live, markQueued, modelState };
 }

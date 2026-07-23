@@ -32,6 +32,8 @@ function fakeStore() {
       }];
     },
     async deleteCachedModel() {},
+    async listServingPods() { return []; },
+    async execInPod() { return ""; },
     async writeGatewayConfig(cfg) {
       const changed = cfg !== gatewayConfig;
       gatewayConfig = cfg;

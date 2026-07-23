@@ -33,6 +33,9 @@ DEFAULT_MAX_OUTPUT_TOKENS = 8192
 # Prompt-side margin (tokens) kept between estimate+max_tokens and the window,
 # absorbing the chars/4 estimate's error before a strict backend 400s.
 WINDOW_MARGIN_TOKENS = 256
+# Minimum patient-retry wait that earns a dedicated model_wait trace marker —
+# a single quick retry blip stays out of the transcript.
+WAIT_MARKER_MS = 2000
 
 
 def _max_output_tokens(options: AgentOptions, window: int) -> int:
@@ -247,6 +250,14 @@ async def query(prompt: str, options: AgentOptions):
                 subtype = "error_during_execution"
                 error_text = str(err)
                 break
+
+            if resp.waited_ms >= WAIT_MARKER_MS:
+                # Dedicated trace marker BEFORE the assistant step: the model
+                # was deploying/scaling and the call waited (patient retries).
+                # wait_ended is monotonic — the consumer stamps the trace row
+                # at that offset so the wait is not misread as generation time.
+                yield SystemMessage("model_wait", {"waited_ms": resp.waited_ms,
+                                                   "wait_ended": resp.wait_ended})
 
             num_turns += 1
             usage_in += int(resp.usage.get("input_tokens") or 0)

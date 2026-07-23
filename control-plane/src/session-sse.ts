@@ -1,6 +1,27 @@
 // control-plane/src/session-sse.ts
 // SSE poll-follow loop shared by GET /v1/sessions/:id/events?stream=1 and
 // POST /api/sessions/:id/events/stream (extracted 2026-07-12).
+
+/** Resolve the session's serving target to a model_routing state so the
+ *  console can label a stalled turn "model deploying / scaling up…" instead
+ *  of "generating…" (follow-up 2026-07-23). last_model — the target the
+ *  session actually resolved to (fix wave H) — wins; before the first call
+ *  the agent routing's terminal target is the best guess. Externals and
+ *  unknowns return null (model_routing only projects LOCAL deployments), so
+ *  external sessions keep the default labels. Fails open to null. */
+export async function modelStateFor(s: any, repo: any): Promise<string | null> {
+  try {
+    let name: string | null = s.last_model ?? null;
+    if (!name && s.agent_id) {
+      const cfg = await repo.getAgentVersion(s.agent_id, s.agent_version);
+      const routing = cfg?.routing ? await repo.getRoutingByName(cfg.routing) : null;
+      name = routing?.terminal?.action === "route" ? (routing.terminal.target ?? null) : null;
+    }
+    return name ? await repo.getModelRoutingState(name) : null;
+  } catch {
+    return null;
+  }
+}
 export async function streamSessionEvents(
   req: any, reply: any, repo: any,
   notify: { subscribe(sessionId: string, fn: () => void): () => void } | undefined,
@@ -37,6 +58,7 @@ export async function streamSessionEvents(
   let lastStatus = "";
   let lastTokens = "";
   let lastModel = "";
+  let lastModelState: string | null = null;
   let terminal = false;
   try {
     while (open) {
@@ -54,16 +76,26 @@ export async function streamSessionEvents(
       // last_model rides the same tick (fix wave H): the accumulate trigger
       // sets it alongside tokens, so a resolved-model change moves with tokens.
       const model = s.last_model ?? "";
-      if (s.status !== lastStatus || tokens !== lastTokens || model !== lastModel) {
+      // Console-only (public frame contract untouched): the serving target's
+      // model_routing state, so a turn stalled on a deploying/waking model
+      // shows a truthful label instead of "generating…". Only resolved while
+      // a turn could actually be waiting (queued|running); ~2 indexed reads
+      // per 5s beat. Null (external/unknown/error) = default labels.
+      const modelState = opts.console && ["queued", "running"].includes(s.status)
+        ? await modelStateFor(s, repo) : null;
+      if (s.status !== lastStatus || tokens !== lastTokens || model !== lastModel
+          || modelState !== lastModelState) {
         lastStatus = s.status;
         lastTokens = tokens;
         lastModel = model;
+        lastModelState = modelState;
         reply.raw.write(`event: status\ndata: ${JSON.stringify({
           status: s.status,
           tokens_in: Number(s.tokens_in ?? 0), tokens_out: Number(s.tokens_out ?? 0),
           billed_cost: Number(s.billed_cost ?? 0),
           turns: Number(s.turns ?? 0),
           last_model: s.last_model ?? null,
+          ...(opts.console ? { model_state: modelState } : {}),
         })}\n\n`);
       }
       // Terminal on completed always; failed only on the public path — the
@@ -71,7 +103,7 @@ export async function streamSessionEvents(
       // resumes from other tabs/API calls appear without a refresh (spec §1).
       if (s.status === "completed" || (!opts.console && s.status === "failed")) { terminal = true; break; }
       if (pending) continue;  // NOTIFY landed while we were processing — re-check now
-      if (opts.console) reply.raw.write(`event: ping\ndata: ${JSON.stringify({ status: s.status })}\n\n`);
+      if (opts.console) reply.raw.write(`event: ping\ndata: ${JSON.stringify({ status: s.status, model_state: modelState })}\n\n`);
       else reply.raw.write(": ka\n\n"); // keep-alive comment — defeats idle proxy timeouts
       const heartbeat = ["idle", "failed"].includes(s.status) ? 15000 : 5000;
       // unref: resolved via wake long before it fires; an armed timer would

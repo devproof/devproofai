@@ -1514,6 +1514,13 @@ export class Repo {
     const { rows } = await this.pool.query("SELECT * FROM routings WHERE name = $1", [name]);
     return rows[0] ?? null;
   }
+
+  /** model_routing state for a LOCAL deployment ('ready'|'idle'|'waking');
+   *  null for externals/unknowns — the projection only holds local models. */
+  async getModelRoutingState(model: string): Promise<string | null> {
+    const { rows } = await this.pool.query("SELECT state FROM model_routing WHERE model = $1", [model]);
+    return rows[0]?.state ?? null;
+  }
   async createRouting(name: string, rules: unknown, terminal: unknown) {
     const { rows } = await this.pool.query(
       `INSERT INTO routings (name, rules, terminal) VALUES ($1, $2, $3) RETURNING *`,

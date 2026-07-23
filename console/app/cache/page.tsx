@@ -1,11 +1,6 @@
 import { wsGet, offsetOf } from "../lib/api";
 import { Pager } from "../lib/pager";
-import { DeleteButton } from "../lib/delete";
-import { DateTime } from "../lib/datetime";
-
-interface CacheEntry {
-  name: string; source: string; size: string | null; phase: string; created: string;
-}
+import { CacheTable, type CacheEntry } from "./cache-table";
 
 export const dynamic = "force-dynamic";
 
@@ -23,23 +18,7 @@ export default async function CachePage({ searchParams }: { searchParams: Promis
     <>
       <h1>Model Cache</h1>
       <p className="sub">Model artifacts downloaded to the cluster — deployments reuse these without re-downloading.</p>
-      <table>
-        <thead>
-          <tr><th>Name</th><th>Size</th><th>Phase</th><th>Source</th><th>Downloaded</th><th></th></tr>
-        </thead>
-        <tbody>
-          {cache.map((c) => (
-            <tr key={c.name}>
-              <td>{c.name}</td>
-              <td>{c.size ?? "—"}</td>
-              <td><span className={`phase ${c.phase}`}>{c.phase}</span></td>
-              <td><code style={{ wordBreak: "break-all" }}>{c.source}</code></td>
-              <td><DateTime iso={c.created} /></td>
-              <td><DeleteButton path={`/v1/cache/${c.name}`} confirmText={`Evict cached model "${c.name}"? It will re-download on next deploy.`} label="Evict" /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <CacheTable initial={cache} offset={offset} />
       <Pager count={count} />
     </>
   );

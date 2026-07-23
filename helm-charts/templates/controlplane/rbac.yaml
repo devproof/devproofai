@@ -9,6 +9,16 @@ rules:
   - apiGroups: [""]
     resources: [configmaps, secrets, services]
     verbs: [get, list, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    # BOTH verbs: kubectl execs via SPDY/POST (verb "create"), but
+    # @kubernetes/client-node execs over websocket, which the apiserver
+    # authorizes as GET — without "get" the CP's download-progress exec
+    # 403s while kubectl-as-SA works (live-debugged 2026-07-23).
+    verbs: [create, get]
   - apiGroups: [apps]
     resources: [deployments]
     verbs: [get, create, update, patch, delete]

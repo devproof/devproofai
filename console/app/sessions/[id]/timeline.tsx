@@ -5,6 +5,7 @@ import type { Row } from "./rows";
 const COLOR: Record<Row["kind"], string> = {
   user: "var(--accent)", agent: "var(--blue)", thinking: "#9ec1f7",
   tool: "#8a63d2", skill: "var(--skill)", subagent: "var(--subagent)", system: "var(--muted)",
+  wait: "var(--wait)",
 };
 
 export function Timeline({ rows, selectedSeq, onSelect }: {

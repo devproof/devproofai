@@ -73,7 +73,10 @@ function DeployModal({ mode, ctx, onClose }: { mode: Mode; ctx: Ctx; onClose: ()
   const idleValid = nMin !== 0 || (Number.isInteger(nIdle) && nIdle >= 1 && nIdle <= 1440);
   const replicasValid = Number.isInteger(nMin) && Number.isInteger(nMax) && Number.isInteger(nRes)
     && nMin >= 0 && nMax >= 1 && nMax >= nMin && nRes >= 0 && nRes <= nMax - nMin && idleValid;
-  const [ctxTokens, setCtxTokens] = useState("");
+  // Deploy: prefill the catalog's context window as a real editable value
+  // (user request 2026-07-23). Edit keeps "" = unchanged semantics.
+  const [ctxTokens, setCtxTokens] = useState(
+    mode === "deploy-local" && ctx.contextTokens != null ? String(ctx.contextTokens) : "");
   const [engine, setEngine] = useState(ctx.engine ?? "auto");
   // remote fields
   const [provider, setProvider] = useState(ctx.provider ?? "openai");
@@ -258,6 +261,7 @@ function DeployModal({ mode, ctx, onClose }: { mode: Mode; ctx: Ctx; onClose: ()
               const m = ctx.catalogPick!.find((x) => x.id === e.target.value);
               setCatalogId(e.target.value);
               setCtxDefault(m?.contextTokens);
+              setCtxTokens(m?.contextTokens != null ? String(m.contextTokens) : "");
               setReasonOpts(m?.reasoning?.efforts ?? null);
               setReasoningEffort("");
               setCpuReq(m?.resources?.cpu ?? "");
@@ -311,7 +315,7 @@ function DeployModal({ mode, ctx, onClose }: { mode: Mode; ctx: Ctx; onClose: ()
         )}
         <Field label="Context" hint={mode === "edit-local"
             ? "tokens — leave empty to keep the current value"
-            : "tokens — leave empty for the catalog default"}>
+            : "tokens — prefilled from the catalog entry; the operator may cap the served window"}>
           <input style={{ width: 170, flex: "none" }} value={ctxTokens}
                  onChange={(e) => setCtxTokens(e.target.value)}
                  placeholder={mode === "edit-local"

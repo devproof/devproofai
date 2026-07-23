@@ -137,6 +137,12 @@ type ModelDeploymentStatus struct {
 	// weights are cached, so later pod starts are scale-ups, not deployments.
 	// +optional
 	Provisioned bool `json:"provisioned,omitempty"`
+	// SettledReplicas is the last desired count that ready fully reached.
+	// Activity compares desired against THIS (not ready), so a rollout or a
+	// crashed replica — desired unchanged — shows no phantom scale overlay
+	// (spec 2026-07-23). Carried forward like Provisioned.
+	// +optional
+	SettledReplicas int32 `json:"settledReplicas,omitempty"`
 }
 
 // +kubebuilder:object:root=true

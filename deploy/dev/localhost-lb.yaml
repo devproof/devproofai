@@ -2,9 +2,10 @@
 # localhost, so out-of-cluster dev processes (control plane, Claude Code, psql)
 # reach in-cluster services WITHOUT kubectl port-forward tunnels.
 # Ports match the historical forward ports so nothing else changes.
+# Namespace = default since the 2026-07-22 reinstall (was devproof).
 apiVersion: v1
 kind: Service
-metadata: { name: postgres-localhost, namespace: devproof }
+metadata: { name: postgres-localhost, namespace: default }
 spec:
   type: LoadBalancer
   selector: { app: devproof-postgres }
@@ -12,7 +13,7 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: minio-localhost, namespace: devproof }
+metadata: { name: minio-localhost, namespace: default }
 spec:
   type: LoadBalancer
   selector: { app: devproof-minio }
@@ -20,8 +21,26 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: gateway-localhost, namespace: devproof }
+metadata: { name: gateway-localhost, namespace: default }
 spec:
   type: LoadBalancer
   selector: { app: devproof-gateway }
   ports: [{ port: 14000, targetPort: 4000 }]
+---
+# Console + control plane joined 2026-07-23: their kubectl port-forwards died
+# on every pod roll (image imports, restarts) — LBs survive them.
+apiVersion: v1
+kind: Service
+metadata: { name: console-localhost, namespace: default }
+spec:
+  type: LoadBalancer
+  selector: { app: devproof-console }
+  ports: [{ port: 7090, targetPort: 7090 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: controlplane-localhost, namespace: default }
+spec:
+  type: LoadBalancer
+  selector: { app: devproof-controlplane }
+  ports: [{ port: 7080, targetPort: 7080 }]

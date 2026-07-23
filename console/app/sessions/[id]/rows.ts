@@ -7,7 +7,7 @@
 // produces exactly one row, unchanged from a flat adjacency grouping.
 import type { LiveEvent } from "./use-session-live";
 
-export type RowKind = "user" | "agent" | "thinking" | "tool" | "skill" | "subagent" | "system";
+export type RowKind = "user" | "agent" | "thinking" | "tool" | "skill" | "subagent" | "system" | "wait";
 // tokensIn/Out are ZERO on every row except the session.result row: the SDK's
 // AssistantMessage.usage is all zeros on the wire, so the runner only attaches
 // usage to ResultMessage (spec 2026-07-13-realtime-token-usage). Per-row
@@ -21,7 +21,7 @@ export interface Row { kind: RowKind; seq: number; title: string; preview?: stri
 // Type badge label, shared by the transcript rows and the detail sheet.
 export const CHIP: Record<RowKind, string> =
   { user: "User", agent: "Agent", thinking: "Think", tool: "Tool", skill: "Skill",
-    subagent: "Subagent", system: "Sys" };
+    subagent: "Subagent", system: "Sys", wait: "Wait" };
 
 export const offsetLabel = (ms: number) => {
   const s = Math.floor(Math.max(0, ms) / 1000);
@@ -151,6 +151,15 @@ export function groupEvents(events: LiveEvent[]): Row[] {
         close(mkRow("thinking", e, firstLine(e.payload?.text ?? "")));
       } else if (e.type === "tool.result") {
         close(mkRow("system", e, "tool result", !!e.payload?.is_error));
+      } else if (e.type === "model.wait") {
+        // Dedicated row (user request 2026-07-23): time the turn spent
+        // waiting for the model to deploy/scale (runner patient retries).
+        // Its offset is stamped at WAIT END, so the delta arithmetic above
+        // charges the wait to this row and the next step shows pure
+        // generation time.
+        const secs = Number(e.payload?.seconds ?? 0);
+        const label = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+        close(mkRow("wait", e, `waited for model deploy / scale-up — ${label}`));
       } else {
         close(mkRow("system", e,
           e.type === "session.result"

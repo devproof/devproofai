@@ -1,6 +1,38 @@
 # Changelog
 
-## v0.1.6 — unreleased
+## v0.1.7 — unreleased
+
+### Fixed
+- Model cache said "Ready" while weights were still downloading — the LLMkube
+  Model CR resolves the source before a byte lands. `/v1/cache` now reports
+  `Downloading` with a live percentage (exec'd byte count vs content length)
+  and the console polls it every 3s while a download runs.
+- Deployments showed a phantom "Scaling up" badge during rollouts and after
+  replica crashes. Activity now compares desired against the last SETTLED
+  replica count; wake/grow/drain badges unchanged, rollouts show Deploying.
+- A running session died with `400 Invalid model name` when its model rolled
+  or scaled mid-turn (gateway replicas serve a route-less config during the
+  rolling reload). The gateway now 503s (`Retry-After`) for any known local
+  model missing from a replica's loaded config, and the session runner
+  retries patiently on a time budget (`DEVPROOF_SDK_PATIENT_RETRY`, default
+  30 min) — a bare 503 is the trigger, since the `/v1/messages` bridge drops
+  response headers. Verified: a session survived a 15-minute mid-turn outage.
+- Session traces charged model deploy/scale wait to the model's step (e.g. a
+  7-minute "thinking" time). Waits now get their own amber "Wait" row and
+  the step timer starts when the model is up. (Waits shorter than the
+  gateway's 300s hold resolve inside one request and stay in the step time.)
+
+### Added
+- Session view shows "model deploying / scaling up…" instead of
+  "generating…" while the serving model isn't ready (SSE `model_state`;
+  external endpoints unaffected).
+- Deployments page updates itself: 3s poll while visible — deploys from any
+  client appear without a manual refresh (Refresh button removed).
+- Local model deploys prefill the context window from the catalog entry.
+- Dev: console and control plane are localhost LoadBalancers
+  (`deploy/dev/localhost-lb.yaml`) — no more port-forwards that die with pods.
+
+## v0.1.6 — 2026-07-22
 
 ### Fixed
 - GPU model deployments were stuck in Pending forever: the operator copied

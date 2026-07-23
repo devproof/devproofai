@@ -267,7 +267,8 @@ func (r *ModelDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// — Activity reads it. Carried forward explicitly from the previous status
 	// because this struct is rebuilt every reconcile, exactly like QueueDepth.
 	status.Provisioned = provisionedNow(md.Status.Provisioned, status.Phase)
-	status.Activity = activityFor(status.Phase, status.Provisioned, replicas, int32(ready))
+	status.SettledReplicas = settleNow(md.Status.SettledReplicas, replicas, int32(ready))
+	status.Activity = activityFor(status.Phase, status.Provisioned, replicas, status.SettledReplicas)
 	return r.setStatus(ctx, md, status, requeue)
 }
 
@@ -288,12 +289,22 @@ func downloadPercent(size string, total int64) int32 {
 	return int32(pct)
 }
 
+// settleNow tracks the last desired count that ready fully reached; carried
+// forward through moves exactly like Provisioned (status rebuilt per reconcile).
+func settleNow(prev, desired, ready int32) int32 {
+	if ready == desired {
+		return desired
+	}
+	return prev
+}
+
 // Activity is a DISPLAY-ONLY overlay on Phase: the deployment is moving
-// between replica counts. Nothing routes on it — Phase stays authoritative
-// for the gateway, the launch gate and the model_routing projection, because
-// new phase values there would drop routes and park sessions during a healthy
-// autoscale (spec 2026-07-15 badges). Empty means "no overlay: show Phase".
-func activityFor(phase string, provisioned bool, desired, ready int32) string {
+// between replica COUNTS. desired vs last-SETTLED desired (not ready): a
+// rollout or crashed replica keeps desired == settled and shows no overlay
+// (spec 2026-07-23; the pre-settled comparison against ready flagged every
+// rollout as a phantom "Scaling up"). Nothing routes on it — Phase stays
+// authoritative for the gateway, launch gate and model_routing projection.
+func activityFor(phase string, provisioned bool, desired, settled int32) string {
 	if !provisioned {
 		return "" // first deploy: Downloading/Copying/Deploying are the truth
 	}
@@ -302,9 +313,9 @@ func activityFor(phase string, provisioned bool, desired, ready int32) string {
 		return "" // a real (re-)provision outranks any replica delta
 	}
 	switch {
-	case desired > ready:
+	case desired > settled:
 		return "ScalingUp"
-	case desired < ready:
+	case desired < settled:
 		return "ScalingDown"
 	}
 	return ""

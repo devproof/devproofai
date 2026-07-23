@@ -904,7 +904,8 @@ class SchemaSanitizer(CustomLogger):
                 if verdict == "unavailable":
                     await _emit_reject_trace(requested, data, md0, _eval_log, "unavailable", "routing target unavailable")
                     raise HTTPException(status_code=503,
-                        detail={"error": "routing target unavailable", "routing": requested, "target": target})
+                        detail={"error": "routing target unavailable", "routing": requested, "target": target},
+                        headers={"Retry-After": "5"})
                 data["model"] = target
                 # Stamp the routing into BOTH metadata channels: on the
                 # /v1/messages (Anthropic) surface LiteLLM's chat-completions
@@ -958,6 +959,26 @@ class SchemaSanitizer(CustomLogger):
             raise
         except Exception as e:  # noqa: BLE001
             print(f"devproof-wake: hold check failed (open): {e}", flush=True)
+        try:  # rollout guard (spec 2026-07-23 issue 3): a model the platform
+              # KNOWS (model_routing row exists) but that THIS replica's loaded
+              # config lacks — the rolling-reload window, route dropped or not
+              # yet re-added — must get a retryable 503, never LiteLLM's
+              # validation 400 (killed sesn_o0roa4kwnots mid-turn; reproduced
+              # 2026-07-23: 200/400 interleave across mixed-config replicas).
+              # Runs AFTER the hold so a released request is re-checked here.
+              # Unknown models (external/deleted) keep the 400. Fail OPEN.
+            model0 = data.get("model")
+            if model0 and await _routing_state(model0) is not None:
+                from litellm.proxy import proxy_server
+                router = getattr(proxy_server, "llm_router", None)
+                if router is not None and model0 not in set(router.get_model_names()):
+                    raise HTTPException(status_code=503,
+                        detail=f"model {model0} is reloading on this gateway replica - retry shortly",
+                        headers={"Retry-After": "5"})
+        except HTTPException:
+            raise
+        except Exception as e:  # noqa: BLE001
+            print(f"devproof-rollout-guard: check failed (open): {e}", flush=True)
         if SCRUB_ALL or data.get("model") in SANITIZE_MODELS:
             for t in data.get("tools") or []:
                 _scrub(t)

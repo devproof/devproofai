@@ -210,6 +210,14 @@ spec:
               readyReplicas:
                 format: int32
                 type: integer
+              settledReplicas:
+                description: |-
+                  SettledReplicas is the last desired count that ready fully reached.
+                  Activity compares desired against THIS (not ready), so a rollout or a
+                  crashed replica — desired unchanged — shows no phantom scale overlay
+                  (spec 2026-07-23). Carried forward like Provisioned.
+                format: int32
+                type: integer
             type: object
         type: object
     served: true
