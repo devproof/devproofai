@@ -26,7 +26,7 @@ $Registry = if ($env:REGISTRY) { $env:REGISTRY } else { "ghcr.io/devproof" }
 $Mirrors = @(
     @{ Src = "postgres:17.10-alpine";                        Dst = "devproofai-postgres:17.10-alpine" }
     @{ Src = "ubuntu/squid:6.13-25.04_edge";                 Dst = "devproofai-squid:6.13" }
-    @{ Src = "ghcr.io/defilantech/llmkube-controller:0.9.7"; Dst = "devproofai-llmkube-controller:0.9.7" }
+    @{ Src = "ghcr.io/defilantech/llmkube-controller:0.9.10"; Dst = "devproofai-llmkube-controller:0.9.10" }
 )
 
 # The source annotation makes GHCR list the package under the devproofai

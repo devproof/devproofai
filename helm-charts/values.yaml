@@ -32,7 +32,7 @@ registryAuth:
 # Passthrough to the pinned LLMkube dependency (see README audit table).
 # The values below make the inherited chart follow the same contract as our
 # own components (resources/nodeSelector/tolerations + disk class/size);
-# defaults mirror upstream 0.9.7 so overriding one key never surprises another.
+# defaults mirror upstream 0.9.10 so overriding one key never surprises another.
 llmkube:
   enabled: true
   imagePullSecrets: []   # set [{name: <registryAuth secret>}] when registryAuth is enabled
@@ -46,7 +46,7 @@ llmkube:
     # devproofai-curl exist as copies only until upstream is deterministic.
     image:
       repository: ghcr.io/devproof/devproofai-llmkube-controller
-      tag: "0.9.7"
+      tag: "0.9.10"
     initContainer:
       repository: docker.io/curlimages/curl
       tag: "8.18.0"

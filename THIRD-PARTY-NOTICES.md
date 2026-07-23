@@ -30,7 +30,7 @@ these only to avoid Docker Hub pull limits.
 | --- | --- | --- | --- |
 | `devproofai-postgres:17.10-alpine` | `postgres:17.10-alpine` (Docker Official Image) | PostgreSQL — https://github.com/postgres/postgres · image: https://github.com/docker-library/postgres | [PostgreSQL License](https://www.postgresql.org/about/licence/) (BSD-style) |
 | `devproofai-squid:6.13` | `ubuntu/squid:6.13-25.04_edge` | Squid — http://www.squid-cache.org/ · source: https://github.com/squid-cache/squid | GPL-2.0-or-later |
-| `devproofai-llmkube-controller:0.9.7` | `ghcr.io/defilantech/llmkube-controller:0.9.7` | LLMKube — https://github.com/defilantech/LLMKube | Apache-2.0 |
+| `devproofai-llmkube-controller:0.9.10` | `ghcr.io/defilantech/llmkube-controller:0.9.10` | LLMKube — https://github.com/defilantech/LLMKube | Apache-2.0 |
 
 **Squid (GPL-2.0-or-later).** We redistribute an unmodified binary
 distribution. The Corresponding Source for release 6.13 is published by the
@@ -53,7 +53,7 @@ of the LiteLLM base image; LiteLLM itself is unmodified.
 
 | Dependency | Version | Source | License |
 | --- | --- | --- | --- |
-| `llmkube` | 0.9.7 | https://github.com/defilantech/LLMKube (chart repo: https://defilantech.github.io/LLMKube) | Apache-2.0 |
+| `llmkube` | 0.9.10 | https://github.com/defilantech/LLMKube (chart repo: https://defilantech.github.io/LLMKube) | Apache-2.0 |
 
 The chart tarball is vendored into the released `devproofai-helm` package by
 `helm dependency build`. `scripts/patch-llmkube-schema.sh` modifies **only**

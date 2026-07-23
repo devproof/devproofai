@@ -26,7 +26,7 @@ REGISTRY="${REGISTRY:-ghcr.io/devproof}"
 MIRRORS=(
   "postgres:17.10-alpine                               devproofai-postgres:17.10-alpine"
   "ubuntu/squid:6.13-25.04_edge                        devproofai-squid:6.13"
-  "ghcr.io/defilantech/llmkube-controller:0.9.7        devproofai-llmkube-controller:0.9.7"
+  "ghcr.io/defilantech/llmkube-controller:0.9.10       devproofai-llmkube-controller:0.9.10"
 )
 
 # The source annotation makes GHCR list the package under the devproofai

@@ -32,6 +32,14 @@
 - Dev: console and control plane are localhost LoadBalancers
   (`deploy/dev/localhost-lb.yaml`) — no more port-forwards that die with pods.
 
+### Changed
+- Bundled LLMkube subchart upgraded 0.9.7 → 0.9.10 (mirrored controller image
+  follows). Additive upstream release: new default-off values blocks (`pyrra`,
+  `gpuSharing`, `runtimeImages`, `platformFloors`), same CRD set, passthrough
+  values contract unchanged. None of the known upstream issues the operator
+  works around (HPA selector labels, phase flap, ISVC image/imagePullSecrets
+  flap) are fixed, so all workarounds remain.
+
 ## v0.1.6 — 2026-07-22
 
 ### Fixed

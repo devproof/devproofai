@@ -34,7 +34,7 @@ profile ships no CP/console pods).
 - Node v25.9.0, npm 11.12.1, Python 3.14.4, Docker 29.5.3
 
 ## LLMkube
-- Chart + app version **0.9.7** (pinned; 0.9.1 → 0.9.4 on 2026-07-12, → 0.9.7 on 2026-07-19), bundled as the
+- Chart + app version **0.9.10** (pinned; 0.9.1 → 0.9.4 on 2026-07-12, → 0.9.7 on 2026-07-19, → 0.9.10 on 2026-07-23), bundled as the
   `llmkube` subchart of `helm-charts` (runs in the `devproof` namespace); values are set
   under the `llmkube:` key of `helm-charts/values.yaml`.
 - CRDs: `models`, `inferenceservices`, `modelrouters`, and since 0.9.7 `gpuquotas` + `loraadapters` (group `inference.llmkube.dev/v1alpha1`; the latter two are unused by Devproof — the quota admission webhook is gated behind `multitenancy.enabled`, default false)
@@ -62,6 +62,7 @@ profile ships no CP/console pods).
   PUBLIC upstream images only (curl init reverted to docker.io/curlimages/curl);
   the operator's DEVPROOF_IMAGE_PULL_SECRET env stays unset in the chart.
   Re-checked against 0.9.7 (2026-07-19): the CPU placement gating (ISVC nodeSelector/tolerations rendered only for GPU/DRA pods, `deployment_builder.go`) is verified unchanged at the 0.9.7 tag, so the nodeAffinity workaround stays; the 0.9.5–0.9.7 release notes mention no fix for the HPA selector bug or the phase flap — all workarounds remain.
+  Re-checked against 0.9.10 (2026-07-23): the 0.9.8–0.9.10 release notes (llamacpp-router runtime, gpuSharing tiers, ROCm tier, Pyrra SLOs, runtimeImages overrides) mention no fix for the HPA selector bug, the phase flap, or the ISVC `spec.image`/`spec.imagePullSecrets` flap — all workarounds remain. CRD set and the passthrough values contract are unchanged (new top-level values keys only: `pyrra`, `gpuSharing`, `runtimeImages`, `platformFloors`); the values.schema.json subchart gap (`enabled`/`global`) persists, so `patch-llmkube-schema.sh` stays.
 - KEDA installed but unused by the LLMkube provider path; reserved for
   scale-to-zero (HTTP add-on) and non-LLMkube providers.
 
