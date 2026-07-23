@@ -37,6 +37,15 @@ export function cacheRows(models: any[], pods: any[]): { rows: CacheRow[]; downl
   return { rows, downloading };
 }
 
+/**
+ * Byte count of the in-flight download, exec'd in the model-downloader init
+ * container. MUST stay stat-based: the downloader image is busybox
+ * (curlimages/curl), whose `wc -c < file` reads every byte — 44s measured on
+ * a mid-download 6.6 GiB GGUF, stalling /v1/cache for the whole read.
+ * stat -c %s is O(1) and prints the same bare number.
+ */
+export const DOWNLOAD_BYTES_CMD = ["sh", "-c", 'stat -c %s "$MODEL_PATH"'];
+
 /** 0-100 (clamped) or null when the total is unknown — degrade, never error. */
 export const progressPct = (bytes: number, total: number): number | null =>
   total > 0 && Number.isFinite(bytes) && bytes >= 0

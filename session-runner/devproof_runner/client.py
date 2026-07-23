@@ -39,6 +39,24 @@ MAX_ATTEMPTS = 4
 # the header, when present, only refines the delay.
 PATIENT_WINDOW = float(os.environ.get("DEVPROOF_SDK_PATIENT_RETRY", "1800"))
 
+# Scale-to-zero wake detection (spec 2026-07-23d). A wake-hold (custom_callbacks
+# _hold_for_wake) holds the FIRST call until the model is routable, then returns
+# 200 — no 503, no retry — whenever the wake fits inside the 300s hold. Such a
+# wake leaves NO patient-retry trace, so its time silently folds into the first
+# model step (a held gemma wake showed as a 43s "Think" row, no Wait badge —
+# live sesn_vd9nfd8qxwig). Infer it from the time-to-first-frame instead: a call
+# whose first SSE frame lands this long after the request was sent was held for
+# the model to come up. Threshold sits above warm prefill (measured ~3-10s on
+# CPU) and below a real wake (13s+); env-tunable. Reported as reason "wake".
+WAKE_MIN_MS = int(float(os.environ.get("DEVPROOF_SDK_WAKE_MIN_SEC", "12")) * 1000)
+
+
+def wake_wait_ms(ttfb_ms: int, had_retry_wait: bool) -> int:
+    """Held time to charge as a scale-up/wake wait (0 = not a wake): a long
+    time-to-first-frame on a call that did NOT already patient-retry (a retry
+    records its own wait; don't double-count)."""
+    return ttfb_ms if (not had_retry_wait and ttfb_ms >= WAKE_MIN_MS) else 0
+
 
 def parse_custom_headers(raw: str) -> dict[str, str]:
     """DEVPROOF_CUSTOM_HEADERS: newline-separated "Name: value" lines."""
@@ -63,6 +81,29 @@ class ApiResponse:
     # deploy/scale time is not misread as generation time.
     waited_ms: int = 0
     wait_ended: float = 0.0
+    # Time-to-first-frame (ms): request-send to first SSE frame. A held first
+    # call (scale-to-zero wake-hold) inflates this — see wake_wait_ms.
+    ttfb_ms: int = 0
+    # Why the wait happened, classified from the last retried error (None =
+    # unclassified/no wait): "reload" (gateway rolling-reload guard), "wake"
+    # (scale-to-zero wake hold), "gateway" (gateway itself unreachable).
+    wait_reason: str | None = None
+
+
+def classify_wait_reason(err: "APIError | None") -> str | None:
+    """Map the last retried error to a wait cause. The 503 detail strings are
+    the gateway's stable markers (helm-charts/files/custom_callbacks.py) —
+    keep them in sync. Connect-level APIErrors carry no HTTP status."""
+    if err is None:
+        return None
+    if err.status is None:
+        return "gateway"
+    msg = str(err)
+    if "reloading on this gateway replica" in msg:
+        return "reload"
+    if "waking from scale-to-zero" in msg:
+        return "wake"
+    return None
 
 
 class _BlockBuilder:
@@ -171,6 +212,16 @@ class MessagesClient:
                 if last_err is not None:
                     resp.waited_ms = int((attempt_start - entry) * 1000)
                     resp.wait_ended = attempt_start
+                    resp.wait_reason = classify_wait_reason(last_err)
+                else:
+                    # No retry, but a long time-to-first-frame means the gateway
+                    # held this call for a scale-to-zero wake (200 within the
+                    # 300s hold). Charge the held time as a wake wait.
+                    held = wake_wait_ms(resp.ttfb_ms, had_retry_wait=False)
+                    if held:
+                        resp.waited_ms = held
+                        resp.wait_ended = attempt_start + held / 1000.0
+                        resp.wait_reason = "wake"
                 return resp
             except APIError as err:
                 if not err.retryable:
@@ -193,6 +244,10 @@ class MessagesClient:
                     raise last_err
 
     async def _stream_once(self, body: dict) -> ApiResponse:
+        # t0 before the stream opens: a wake-hold blocks here (response headers
+        # arrive only once the gateway releases the held request), so the
+        # time-to-first-frame measured from t0 captures the hold.
+        t0 = time.monotonic()
         async with self._client.stream("POST", "/v1/messages", json=body) as res:
             if res.status_code != 200:
                 raw = (await res.aread()).decode("utf-8", "replace")
@@ -209,14 +264,16 @@ class MessagesClient:
                                status=res.status_code,
                                retryable=res.status_code in RETRYABLE_STATUS,
                                retry_after=retry_after)
-            return await self._parse_sse(res)
+            return await self._parse_sse(res, t0)
 
-    async def _parse_sse(self, res: httpx.Response) -> ApiResponse:
+    async def _parse_sse(self, res: httpx.Response, t0: float | None = None) -> ApiResponse:
         out = ApiResponse()
         builders: dict[int, _BlockBuilder] = {}
         order: list[int] = []
         data_lines: list[str] = []
         async for line in res.aiter_lines():
+            if out.ttfb_ms == 0 and t0 is not None and line.strip():
+                out.ttfb_ms = int((time.monotonic() - t0) * 1000)
             if line.startswith("data:"):
                 data_lines.append(line[5:].lstrip())
                 continue

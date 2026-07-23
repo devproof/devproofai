@@ -4,7 +4,7 @@ import { CatalogEntry, resolveDeployment, DeploymentRequest } from "./catalog.ts
 import { buildGatewayConfig, envKeyFor, newlyRouted } from "./gateway-config.ts";
 import { fetchPeakThroughput, fetchServingMetrics, observedByCatalogId } from "./metrics.ts";
 import { validateRouting, reachableLocalTargets, reachableTargets, ROUTING_NAME, type RoutingSpec } from "./routing-rules.ts";
-import { cacheRows, progressPct } from "./cache-rows.ts";
+import { cacheRows, progressPct, DOWNLOAD_BYTES_CMD } from "./cache-rows.ts";
 import type { KubeStore } from "./kubestore.ts";
 import { SERVING_NAMESPACE } from "./namespaces.ts";
 import { localServingEnabled } from "./serving-mode.ts";
@@ -269,8 +269,7 @@ export function buildServer(
     // Any failure degrades to Downloading-without-number, never an error.
     await Promise.all(downloading.map(async (d) => {
       try {
-        const out = await store.execInPod(d.pod, "model-downloader",
-          ["sh", "-c", 'wc -c < "$MODEL_PATH"']);
+        const out = await store.execInPod(d.pod, "model-downloader", DOWNLOAD_BYTES_CMD);
         const row = all.find((r) => r.name === d.name);
         if (row) row.progress = progressPct(Number(out.trim()), d.total);
       } catch { /* degrade */ }

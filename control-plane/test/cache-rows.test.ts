@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cacheRows, progressPct } from "../src/cache-rows.ts";
+import { cacheRows, progressPct, DOWNLOAD_BYTES_CMD } from "../src/cache-rows.ts";
 
 const model = (name: string, phase = "Ready", total?: number) => ({
   metadata: { name, creationTimestamp: "2026-07-23T00:00:00Z" },
@@ -52,6 +52,16 @@ test("row shape keeps the existing /v1/cache fields", () => {
   const { rows } = cacheRows([model("e")], []);
   assert.deepEqual(Object.keys(rows[0]).sort(),
     ["created", "name", "phase", "progress", "size", "source"]);
+});
+
+test("download byte-count exec is stat-based, never wc (busybox wc reads the whole file)", () => {
+  // The downloader image is busybox-based: `wc -c < file` READs every byte —
+  // measured 44s on a mid-download 6.6 GiB GGUF, which stalled /v1/cache and
+  // the console cache page for the whole read. stat -c %s is O(1).
+  const script = DOWNLOAD_BYTES_CMD[DOWNLOAD_BYTES_CMD.length - 1];
+  assert.ok(script.includes("stat"), script);
+  assert.ok(!script.includes("wc"), script);
+  assert.ok(script.includes("$MODEL_PATH"), script);
 });
 
 test("progressPct math", () => {

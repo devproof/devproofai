@@ -21,7 +21,10 @@ export type ModelPhase =
   // Routing (spec 2026-07-16): resolution is request-dependent, so sessions
   // never park on a routing — the gateway wake-hold covers Idle targets
   // (the hold applies to internal traffic when routing-resolved).
-  | { kind: "routing"; contextTokens?: number | null }
+  // deadTargets (spec 2026-07-23c): set to the routing's reachable target
+  // names when NONE of them still exist (all deleted) — the routing can never
+  // route, so the gate fails the session instead of launching into a wait.
+  | { kind: "routing"; contextTokens?: number | null; deadTargets?: string[] }
   | null;
 
 export type GateDecision =
@@ -32,7 +35,21 @@ export type GateDecision =
 export function gateDecision(model: string, resolved: ModelPhase): GateDecision {
   // External endpoints are always routed; unknown names keep today's behavior
   // (launch and let the turn surface the gateway error).
-  if (!resolved || resolved.kind === "external" || resolved.kind === "routing") return { action: "launch" };
+  if (!resolved || resolved.kind === "external") return { action: "launch" };
+  if (resolved.kind === "routing") {
+    // A routing whose reachable targets have all been deleted can never route:
+    // the gateway 503s "routing target unavailable" for a deleted terminal
+    // target, which the runner patiently retries for ~30 min instead of
+    // failing. Fail at the gate so the pod never launches (spec 2026-07-23c).
+    const dead = resolved.deadTargets;
+    if (dead?.length) {
+      const names = dead.map((n) => `"${n}"`).join(", ");
+      return { action: "fail",
+        error: `routing "${model}" points to ${dead.length > 1 ? "models" : "model"} ${names} `
+             + `that no longer exist${dead.length > 1 ? "" : "s"} — fix the routing or redeploy, then send a new message` };
+    }
+    return { action: "launch" };
+  }
   const phase = resolved.phase || "Pending";
   if (phase === "Ready") return { action: "launch" };
   if (phase === "Failed") {

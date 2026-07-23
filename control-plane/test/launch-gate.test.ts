@@ -87,9 +87,23 @@ test("sweepPendingLaunches releases Ready models, keeps waiting ones, fails Fail
   assert.equal(repo.statuses["sesn_ready"], undefined, "released session keeps its queued status");
 });
 
-test("routing kind always launches", () => {
+test("routing kind launches while it has a live target", () => {
   assert.deepEqual(gateDecision("my-route", { kind: "routing", contextTokens: 32768 }), { action: "launch" });
   assert.deepEqual(gateDecision("my-route", { kind: "routing", contextTokens: null }), { action: "launch" });
+});
+
+test("routing kind fails fast when its target model was deleted (no wait loop)", () => {
+  // The gateway 503s "routing target unavailable" for a deleted terminal-route
+  // target, which the runner patiently retries for 30 min. Failing here means
+  // the pod never launches — a clear error instead of a silent wait.
+  const d = gateDecision("my-route", { kind: "routing", contextTokens: null, deadTargets: ["qwen3-medium"] });
+  assert.equal(d.action, "fail");
+  assert.match((d as any).error, /my-route/);
+  assert.match((d as any).error, /qwen3-medium/);
+  // plural form lists every dead target
+  const d2 = gateDecision("r", { kind: "routing", contextTokens: null, deadTargets: ["a", "b"] });
+  assert.equal(d2.action, "fail");
+  assert.match((d2 as any).error, /"a", "b"/);
 });
 
 // NOTE (fix wave I): the resolver that produces the ModelPhase gateDecision

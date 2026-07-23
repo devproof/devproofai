@@ -28,6 +28,20 @@ export const offsetLabel = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
+// A Wait row is shown ONLY for a genuine model scale-up / deployment wait: a
+// scale-to-zero wake (reason "wake", any duration — that IS the model coming
+// up) or any wait long enough that the model was demonstrably down/coming up
+// (>= WAIT_SHOW_SEC). Shorter waits are transient gateway rolling-reload
+// bounces (~5s Retry-After cycles on an already-serving model): they render
+// NOTHING and their time folds into the next action, keeping tool groups
+// intact ("Bash ×3") — the pre-dev55 accounting (user decision 2026-07-23c).
+// Duration, not the classified reason, is the discriminator: a fresh deploy's
+// route-absent stretch and a 5s transient bounce are BOTH reason "reload" and
+// differ only in length (live: 346s deploy vs 5s bounce in one turn).
+const WAIT_SHOW_SEC = 20;
+const isScaleUpWait = (e: { payload?: any }) =>
+  e.payload?.reason === "wake" || Number(e.payload?.seconds ?? 0) >= WAIT_SHOW_SEC;
+
 const firstLine = (t: string, max = 120) => {
   const line = (t ?? "").split("\n").find((l) => l.trim()) ?? "";
   return line.length > max ? line.slice(0, max) + "…" : line;
@@ -83,14 +97,23 @@ export function groupEvents(events: LiveEvent[]): Row[] {
     if (!tool) return;
     const buffered = tool.events;
     tool = null;
+    // Skill partitions like Delegate: both have dedicated row kinds (green
+    // Skill row, Subagent row), and with wait events no longer splitting the
+    // buffer (2026-07-23b) a Skill call adjacent to other tools would merge
+    // into a mixed "Bash, Skill" group and lose its presentation.
     const delegateEvents: LiveEvent[] = [];
+    const skillEvents: LiveEvent[] = [];
     const otherEvents: LiveEvent[] = [];
-    const partitionById = new Map<string, "delegate" | "other">();
-    let lastPartition: "delegate" | "other" = "other";
+    type Part = "delegate" | "skill" | "other";
+    const bucket: Record<Part, LiveEvent[]> =
+      { delegate: delegateEvents, skill: skillEvents, other: otherEvents };
+    const partitionById = new Map<string, Part>();
+    let lastPartition: Part = "other";
     for (const e of buffered) {
-      let partition: "delegate" | "other";
+      let partition: Part;
       if (e.type === "tool.call") {
-        partition = String(e.payload?.tool) === "Delegate" ? "delegate" : "other";
+        const name = String(e.payload?.tool);
+        partition = name === "Delegate" ? "delegate" : name === "Skill" ? "skill" : "other";
         const id = e.payload?.id;
         if (id != null) partitionById.set(id, partition);
         lastPartition = partition;
@@ -98,7 +121,7 @@ export function groupEvents(events: LiveEvent[]): Row[] {
         const id = e.payload?.id;
         partition = (id != null && partitionById.has(id)) ? partitionById.get(id)! : lastPartition;
       }
-      (partition === "delegate" ? delegateEvents : otherEvents).push(e);
+      bucket[partition].push(e);
     }
     // Emit in chronological-END order (last event's seq), not start order:
     // close()'s prevEnd bookkeeping and the trailing-pending check (below)
@@ -108,7 +131,7 @@ export function groupEvents(events: LiveEvent[]): Row[] {
     // by first-seq would emit it before a partition it actually outlasts,
     // corrupting prevEnd's monotonic advance (false "new turn" resets) and
     // hiding a genuinely-pending trailing tool from the rows[last] check.
-    const partitions = [delegateEvents, otherEvents]
+    const partitions = [delegateEvents, skillEvents, otherEvents]
       .filter((p) => p.length > 0)
       .sort((a, b) => a[a.length - 1].seq - b[b.length - 1].seq);
     for (const p of partitions) {
@@ -129,6 +152,11 @@ export function groupEvents(events: LiveEvent[]): Row[] {
   });
 
   for (const e of events) {
+    // Drop transient (short, non-wake) waits BEFORE closeTool so they neither
+    // split an open tool group ("Bash ×3" stays grouped) nor advance prevEnd —
+    // their time folds into the next row. Genuine scale-up/deploy waits fall
+    // through to the Wait row below.
+    if (e.type === "model.wait" && !isScaleUpWait(e)) continue;
     if (e.type === "tool.call") {
       if (!tool) tool = { kind: "tool", seq: e.seq, title: "", error: false,
         tokensIn: 0, tokensOut: 0, durationMs: 0, offsetMs: e.duration_ms, events: [] };
@@ -152,11 +180,10 @@ export function groupEvents(events: LiveEvent[]): Row[] {
       } else if (e.type === "tool.result") {
         close(mkRow("system", e, "tool result", !!e.payload?.is_error));
       } else if (e.type === "model.wait") {
-        // Dedicated row (user request 2026-07-23): time the turn spent
-        // waiting for the model to deploy/scale (runner patient retries).
-        // Its offset is stamped at WAIT END, so the delta arithmetic above
-        // charges the wait to this row and the next step shows pure
-        // generation time.
+        // Only genuine scale-up/deploy waits reach here (the skip above): time
+        // the model spent coming up before this call. Offset is stamped at
+        // WAIT END, so the delta arithmetic charges the wait to this row and
+        // the next step shows pure generation time.
         const secs = Number(e.payload?.seconds ?? 0);
         const label = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
         close(mkRow("wait", e, `waited for model deploy / scale-up — ${label}`));
@@ -190,8 +217,8 @@ export function groupEvents(events: LiveEvent[]): Row[] {
 
   // Titles for tool groups: "Bash", "Bash ×2", or "Read, Docs Rag Search".
   // The mixed-name fallback (names.length > 1) can never include "Delegate"
-  // here — closeTool's partition above guarantees a Delegate row never mixes
-  // with other tools, so it always hits the dedicated branch below instead.
+  // or "Skill" here — closeTool's partition above guarantees they never mix
+  // with other tools, so they always hit their dedicated branches below.
   for (const r of rows) {
     if (r.kind !== "tool") continue;
     const calls = r.events.filter((e) => e.type === "tool.call");

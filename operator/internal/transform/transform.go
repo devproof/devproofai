@@ -54,6 +54,18 @@ func Build(md *v1alpha1.ModelDeployment, pool *v1alpha1.ModelPool, replicas int3
 			"format": md.Spec.Model.Format,
 		},
 	}}
+	// GPU deployments must declare hardware.gpu on the Model CR: LLMkube's
+	// CUDA-image divert (resolveRuntimeImage, 0.9.9+) keys ONLY on it — ISVC
+	// resources.gpu feeds --n-gpu-layers and the device request but NOT image
+	// selection, so without this block the engine runs the CPU-only image with
+	// an allocated-but-unused GPU (vendor unset = NVIDIA upstream default).
+	if g, ok := md.Spec.Resources["gpu"]; ok {
+		if n, err := strconv.ParseInt(g, 10, 32); err == nil && n > 0 {
+			model.Object["spec"].(map[string]interface{})["hardware"] = map[string]interface{}{
+				"gpu": map[string]interface{}{"count": n},
+			}
+		}
+	}
 
 	isvcSpec := map[string]interface{}{
 		"modelRef": md.Name,

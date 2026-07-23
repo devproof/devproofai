@@ -1,14 +1,28 @@
 # Changelog
 
-## v0.1.8 — unreleased
+## v0.1.8 — 2026-07-23
+
+### Fixed
+- GPU deployments silently ran on CPU (~0.2 tok/s for a 12B): the operator now
+  sets the Model CR's `hardware.gpu.count`, which is what LLMkube uses to pick
+  the CUDA engine image (measured: 0.18 → ~60 tok/s).
+- Session Wait rows now appear only for real model deploy/scale-up waits.
+  Transient gateway-reload blips no longer show a row or split tool groups
+  ("Bash ×3" stays grouped) — their time counts into the next action.
+- A scale-to-zero wake that fit inside the gateway hold showed no Wait badge
+  (the held first call never retried) — its time leaked into the Think row.
+  The runner now detects it from the time-to-first-frame.
+- A routing whose target model was deleted made sessions wait ~30 min instead
+  of failing. Sending now fails fast with "routing … points to model … that
+  no longer exists".
+- Session send errors are shown above the composer input, not after the button.
+- Model Cache page no longer stalls (up to ~45s) while a model downloads: the
+  progress probe uses `stat -c %s` instead of busybox `wc -c`.
 
 ### Changed
-- `helm uninstall` no longer deletes the data PVCs: the bundled Postgres and
-  MinIO claims carry `helm.sh/resource-policy: keep`, so the database and
-  object store survive an accidental uninstall and a reinstall under the same
-  release name picks them up. Delete the PVCs manually to actually drop data.
-  (Model-cache and session-work PVCs are unaffected — they are rebuildable
-  and managed outside Helm.)
+- `helm uninstall` keeps the bundled Postgres and MinIO data PVCs
+  (`helm.sh/resource-policy: keep`); delete them manually to drop data.
+  Model-cache and session-work PVCs are unaffected.
 
 ## v0.1.7 — 2026-07-23
 

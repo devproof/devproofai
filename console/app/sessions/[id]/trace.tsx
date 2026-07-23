@@ -168,6 +168,7 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
 
       {status !== "completed" && (
         <div className="sv-composer">
+          {error && <div className="modal-error" style={{ margin: "0 2px 6px" }}>{error}</div>}
           {attached.length > 0 && (
             <div className="attach" style={{ padding: "0 2px" }}>
               <AttachFiles value={attached} onChange={setAttached} compact />
@@ -184,7 +185,6 @@ export function SessionView({ session: s0, resources, initialEvents, cost }:
               value={prompt} onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !busy && send()} />
             <button disabled={busy || !prompt.trim()} onClick={send}>{busy ? "Sending…" : "Send ▸"}</button>
-            {error && <span className="modal-error" style={{ margin: 0 }}>{error}</span>}
           </div>
         </div>
       )}

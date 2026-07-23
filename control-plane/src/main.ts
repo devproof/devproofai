@@ -84,13 +84,21 @@ const modelPhase = async (name: string): Promise<import("./launch-gate.ts").Mode
       const c = td?.status?.effectiveContextTokens ?? null;
       if (c && (min === null || c < min)) min = c;
     }
+    let liveExternal = false;
     for (const t of reachableTargets(spec)) {
       if (localNames.has(t)) continue;
       const ext = await repo.getExternalDeploymentByName(t);
+      if (ext) liveExternal = true;
       const c = ext?.context_tokens ?? null;
       if (c != null && (min === null || c < min)) min = c;
     }
-    return { kind: "routing", contextTokens: min };
+    // A routing that targets model(s) but has NONE still live is dead — every
+    // request 503s "routing target unavailable" and the runner waits it out.
+    // Fail such a session at the gate (spec 2026-07-23c). A routing with no
+    // targets at all (rules-less + reject terminal) is intentional, not dead.
+    const all = reachableTargets(spec);
+    const deadTargets = all.length > 0 && locals.length === 0 && !liveExternal ? all : undefined;
+    return { kind: "routing", contextTokens: min, ...(deadTargets ? { deadTargets } : {}) };
   }
   const d = localServing ? await kube.get("modeldeployments", name).catch(() => null) : null;
   if (d) {

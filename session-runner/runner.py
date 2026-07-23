@@ -794,9 +794,10 @@ async def run_query(prompt: str, options, state: dict) -> tuple[str | None, str 
                 # and the following step shows pure generation time.
                 # max(1, …): emit() treats duration_ms=0 as "stamp now".
                 offset_ms = max(1, int((message.data.get("wait_ended", 0.0) - START) * 1000))
-                emit("model.wait",
-                     {"seconds": round(message.data.get("waited_ms", 0) / 1000)},
-                     duration_ms=offset_ms)
+                payload = {"seconds": round(message.data.get("waited_ms", 0) / 1000)}
+                if message.data.get("reason"):
+                    payload["reason"] = message.data["reason"]
+                emit("model.wait", payload, duration_ms=offset_ms)
         elif isinstance(message, AssistantMessage):
             for block in message.content:
                 kind = type(block).__name__

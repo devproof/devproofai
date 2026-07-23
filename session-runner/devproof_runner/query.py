@@ -257,7 +257,8 @@ async def query(prompt: str, options: AgentOptions):
                 # wait_ended is monotonic — the consumer stamps the trace row
                 # at that offset so the wait is not misread as generation time.
                 yield SystemMessage("model_wait", {"waited_ms": resp.waited_ms,
-                                                   "wait_ended": resp.wait_ended})
+                                                   "wait_ended": resp.wait_ended,
+                                                   "reason": resp.wait_reason})
 
             num_turns += 1
             usage_in += int(resp.usage.get("input_tokens") or 0)

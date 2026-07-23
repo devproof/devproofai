@@ -399,6 +399,27 @@ func TestBuildEngineImageSelection(t *testing.T) {
 	}
 }
 
+func TestBuildModelHardwareGpu(t *testing.T) {
+	// LLMkube's CUDA-image divert (resolveRuntimeImage) keys ONLY on the Model
+	// CR's spec.hardware.gpu — ISVC resources.gpu feeds --n-gpu-layers but NOT
+	// image selection. Without the hardware block a GPU deployment runs the
+	// CPU-only llama.cpp:server image with an allocated-but-unused GPU (live
+	// bug: gemma-4-12b-it-q4 at 0.18 tok/s, 2026-07-23).
+	md, pool := fixtures()
+	md.Spec.Resources["gpu"] = "2"
+	model, _ := Build(md, pool, 1, EngineImages{})
+	count, found, err := unstructured.NestedInt64(model.Object, "spec", "hardware", "gpu", "count")
+	if err != nil || !found || count != 2 {
+		t.Fatalf("gpu deployment must declare Model hardware.gpu.count: found=%v err=%v count=%d", found, err, count)
+	}
+
+	md, pool = fixtures()
+	model, _ = Build(md, pool, 1, EngineImages{})
+	if _, found, _ := unstructured.NestedMap(model.Object, "spec", "hardware"); found {
+		t.Fatalf("cpu deployment must not declare Model hardware")
+	}
+}
+
 func TestBuildResourcesGpuIsNumeric(t *testing.T) {
 	// The LLMkube ISVC CRD types spec.resources.gpu as integer (int32) while
 	// cpu/memory are strings — a string gpu fails the typed server-side apply
