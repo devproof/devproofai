@@ -3002,3 +3002,75 @@ models:
     capacityProfiles:
       - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 14 }
 
+  # ── Additional open families (16GB-class, released within 12 months) ───────
+  - id: apertus-8b-instruct-2509-q4
+    family: apertus
+    displayName: "Apertus 8B Instruct"
+    parameters: 8B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/unsloth/Apertus-8B-Instruct-2509-GGUF/resolve/main/Apertus-8B-Instruct-2509-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-09-02"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 65536
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: olmo-3-7b-instruct-q4
+    family: olmo
+    displayName: "OLMo 3 7B Instruct"
+    parameters: 7B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/lmstudio-community/Olmo-3-7B-Instruct-GGUF/resolve/main/Olmo-3-7B-Instruct-Q4_K_M.gguf
+    license: apache-2.0
+    releaseDate: "2025-11-20"
+    recommendedEngine: llama.cpp
+    toolCalling: basic
+    contextTokens: 65536
+    requirements: { vramGB: 7, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: lfm2.5-8b-a1b-q4
+    family: lfm
+    displayName: "LFM2.5 8B A1B"
+    parameters: 8B-A1B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/LiquidAI/LFM2.5-8B-A1B-GGUF/resolve/main/LFM2.5-8B-A1B-Q4_K_M.gguf
+    license: lfm-1.0
+    releaseDate: "2026-05-13"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 8, diskGB: 6, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }
+
+  - id: ling-mini-2.0-q4
+    family: ling
+    displayName: "Ling mini 2.0"
+    parameters: 16B-A1.4B
+    format: gguf
+    quantization: Q4_K_M
+    source: https://huggingface.co/inclusionAI/Ling-mini-2.0-GGUF/resolve/main/Ling-mini-2.0-Q4_K_M.gguf
+    license: mit
+    releaseDate: "2025-09-16"
+    recommendedEngine: llama.cpp
+    toolCalling: strong
+    contextTokens: 131072
+    requirements: { vramGB: 12, diskGB: 11, gpus: 1 }
+    resources: { cpu: "3", memory: "11Gi" }
+    capacityProfiles:
+      - { gpuType: nvidia-t4, instanceType: g4dn.xlarge, gpusPerReplica: 1, vramGB: 16, estTokensPerSec: 40 }
+      - { gpuType: nvidia-a10g, instanceType: g5.xlarge, gpusPerReplica: 1, vramGB: 24, estTokensPerSec: 70 }

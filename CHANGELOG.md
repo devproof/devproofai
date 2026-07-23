@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.9 — unreleased
+
+### Added
+- Catalog: 4 more 16 GB-class models — Apertus 8B, OLMo 3 7B, LFM2.5 8B A1B,
+  Ling mini 2.0 (GGUF Q4, all released within the last 12 months).
+
 ## v0.1.8 — 2026-07-23
 
 ### Fixed
