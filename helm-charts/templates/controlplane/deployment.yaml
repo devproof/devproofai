@@ -83,6 +83,7 @@ spec:
             - { name: DEVPROOF_GATEWAY_NAMESPACE, value: {{ include "devproof.gatewayNamespace" $ | quote }} }
             - { name: DEVPROOF_SERVING_NAMESPACE, value: {{ include "devproof.servingNamespace" $ | quote }} }
             - { name: DEVPROOF_LOCAL_SERVING, value: {{ .Values.llmkube.enabled | quote }} }
+            - { name: DEVPROOF_SEED_DEFAULTS, value: {{ .Values.controlplane.seedDefaults | quote }} }
             - { name: DEVPROOF_CATALOG, value: /app/catalog/models.yaml }
             - { name: DEVPROOF_MCP_REGISTRY, value: /app/catalog/mcp-servers.yaml }
           ports: [{ containerPort: 7080 }]

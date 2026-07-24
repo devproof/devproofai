@@ -1853,6 +1853,17 @@ export class Repo {
       [JSON.stringify(s)]);
   }
 
+  // ── One-time default resource seed (spec 2026-07-24) ─────────────────────
+  async getSeedDefaultsApplied(): Promise<boolean> {
+    const { rows } = await this.pool.query(
+      "SELECT data->'seed'->>'defaultsApplied' AS applied FROM app_settings WHERE id = 'global'");
+    return rows[0]?.applied === "true";
+  }
+  async setSeedDefaultsApplied() {
+    await this.pool.query(
+      `UPDATE app_settings SET data = jsonb_set(data, '{seed}', '{"defaultsApplied": true}'::jsonb), updated_at = now() WHERE id = 'global'`);
+  }
+
   // ── Maintenance retention queries (spec 2026-07-17 §3) ───────────────────
   async pruneCostEntries(cutoffMs: number): Promise<number> {
     const res = await this.pool.query(

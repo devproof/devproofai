@@ -13,6 +13,7 @@ import { realOrchestrator, sweepOrphanedK8s } from "./orchestrator.ts";
 import { registerPublicApi, sweepStaleUploads } from "./public-api.ts";
 import { startReconciler } from "./reconciler.ts";
 import { sweepModelRouting } from "./routing-state.ts";
+import { seedDefaults } from "./seed-defaults.ts";
 import { localServingEnabled } from "./serving-mode.ts";
 import { interruptChildSessions } from "./subagents.ts";
 import { settleSession, startCostSampler } from "./cost-sampler.ts";
@@ -47,6 +48,15 @@ try {
 }
 const repo = new Repo(pool);
 const kube = realKubeStore();
+// One-time default resource seed (spec 2026-07-24): flag- and marker-guarded.
+// Warn-and-continue like the gateway-secret bootstrap above — a failed seed
+// leaves the marker unset, so the next boot retries (skip-if-exists makes
+// that harmless) and never blocks the CP.
+try {
+  await seedDefaults({ repo, kube: localServing ? kube : null });
+} catch (err) {
+  console.warn("default-resource seed failed — will retry next boot:", err);
+}
 const orchestrator = realOrchestrator();
 const wake = (model: string) => wakeModel({ kube, repo }, model);
 // Launch gate (2026-07-12): how a session's model name resolves right now.

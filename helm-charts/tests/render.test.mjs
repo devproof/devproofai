@@ -252,3 +252,10 @@ test("operator DEVPROOF_CONTROL_PLANE_URL: derived in-cluster by default, dev ov
   const devOut = render(["-f", chart + "/values-dev.yaml"]);
   assert.ok(/DEVPROOF_CONTROL_PLANE_URL[\s\S]*?http:\/\/host\.docker\.internal:7080/.test(devOut));
 });
+
+test("controlplane seedDefaults flag: on by default, --set off renders false", () => {
+  const on = render();
+  assert.ok(/DEVPROOF_SEED_DEFAULTS[^\n]*"true"/.test(on));
+  const off = render(["--set", "controlplane.seedDefaults=false"]);
+  assert.ok(/DEVPROOF_SEED_DEFAULTS[^\n]*"false"/.test(off));
+});
