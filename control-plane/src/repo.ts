@@ -1898,6 +1898,27 @@ export class Repo {
       [kind, cutoffMs]);
     return rows;
   }
+  /** Routing 403 diagnostics (spec 2026-07-24 G1) — no FKs, safe bulk delete. */
+  async pruneRoutingRejects(cutoffMs: number): Promise<number> {
+    const res = await this.pool.query(
+      "DELETE FROM routing_rejects WHERE created_at < now() - ($1 * interval '1 millisecond')", [cutoffMs]);
+    return res.rowCount ?? 0;
+  }
+  /** Price rows whose resource is gone (spec 2026-07-24 G4). An empty liveRefs
+   *  is valid — zero live resources means every row of the kind is orphaned. */
+  async pruneOrphanResourcePrices(
+    kind: "pool" | "deployment" | "external" | "environment", liveRefs: string[],
+  ): Promise<number> {
+    const res = await this.pool.query(
+      "DELETE FROM resource_prices WHERE kind = $1 AND NOT (ref = ANY($2::text[]))", [kind, liveRefs]);
+    return res.rowCount ?? 0;
+  }
+  /** Global id lists for the maintenance orphan sweeps. The table name is a
+   *  compile-time union, never user input. */
+  async listAllIds(table: "vaults" | "environments" | "sessions" | "external_deployments"): Promise<string[]> {
+    const { rows } = await this.pool.query(`SELECT id FROM ${table}`);
+    return rows.map((r: any) => r.id);
+  }
 
   // ── Appearance / theme (spec 2026-07-15) ─────────────────────────────────
   async getAppearance(): Promise<Appearance> {

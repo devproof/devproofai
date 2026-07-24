@@ -175,6 +175,58 @@ test("listExpiredFiles: detached + aged + kind-scoped only", { skip: !available 
   }
 });
 
+test("pruneRoutingRejects deletes only pre-cutoff rows (3650d guard)", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const marker = `t-maint-rej-${tag}`;
+  try {
+    await pool.query(
+      `INSERT INTO routing_rejects (routing, created_at)
+       VALUES ($1, now() - interval '4000 days'), ($1, now())`, [marker]);
+    const n = await repo.pruneRoutingRejects(3650 * 86_400_000);
+    assert.ok(n >= 1);
+    const left = await pool.query("SELECT count(*)::int AS n FROM routing_rejects WHERE routing = $1", [marker]);
+    assert.equal(left.rows[0].n, 1, "fresh reject row survives");
+  } finally {
+    await pool.query("DELETE FROM routing_rejects WHERE routing = $1", [marker]);
+  }
+});
+
+test("pruneOrphanResourcePrices deletes only refs missing from the live set", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const orphanRef = `t-maint-price-orphan-${tag}`;
+  const liveRef = `t-maint-price-live-${tag}`;
+  try {
+    await pool.query(
+      `INSERT INTO resource_prices (kind, ref, prices) VALUES ('environment', $1, '{"time":{}}'::jsonb), ('environment', $2, '{"time":{}}'::jsonb)`,
+      [orphanRef, liveRef]);
+    // Live set = every currently-priced environment ref EXCEPT our orphan, so
+    // pre-existing dev rows are never touched by this test.
+    const { rows } = await pool.query("SELECT ref FROM resource_prices WHERE kind = 'environment'");
+    const live = rows.map((r: any) => r.ref).filter((ref: string) => ref !== orphanRef);
+    const n = await repo.pruneOrphanResourcePrices("environment", live);
+    assert.ok(n >= 1);
+    const left = await pool.query(
+      "SELECT ref FROM resource_prices WHERE kind = 'environment' AND ref IN ($1, $2)", [orphanRef, liveRef]);
+    assert.deepEqual(left.rows.map((r: any) => r.ref), [liveRef], "orphan gone, live ref survives");
+  } finally {
+    await pool.query("DELETE FROM resource_prices WHERE ref IN ($1, $2)", [orphanRef, liveRef]);
+  }
+});
+
+test("listAllIds returns global id lists", { skip: !available }, async () => {
+  const repo = new Repo(pool);
+  const sesn = `sesn_tmids${tag}`;
+  try {
+    await seedSession(sesn, "idle", 0);
+    assert.ok((await repo.listAllIds("sessions")).includes(sesn));
+    for (const t of ["vaults", "environments", "external_deployments"] as const) {
+      assert.ok(Array.isArray(await repo.listAllIds(t)), t);
+    }
+  } finally {
+    await pool.query("DELETE FROM sessions WHERE id = $1", [sesn]);
+  }
+});
+
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

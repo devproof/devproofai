@@ -130,7 +130,8 @@ export async function registerAgentRoutes(
            /** Called when a session frees the writer slot (terminal/interrupt) —
             *  releases the next parked writer session (spec 2026-07-18). */
            releaseWriterSlot?: (sessionId: string) => void;
-           wakeModel?: (model: string) => Promise<void> },
+           wakeModel?: (model: string) => Promise<void>;
+           maintenanceDeps?: import("./maintenance.ts").MaintenanceDeps },
 ) {
   const sessionDeps = { repo, orchestrator, modelPhase: opts?.modelPhase, wakeModel: opts?.wakeModel };
   await app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } });
@@ -1150,8 +1151,9 @@ export async function registerAgentRoutes(
   });
 
   // Manual maintenance trigger (console "Run maintenance now"). Synchronous:
-  // bounded work, the console shows the returned per-section summary.
-  app.post("/v1/maintenance/run", async () => runMaintenance({
+  // bounded work, the console shows the returned per-section summary. Uses the
+  // SAME deps object as the scheduler (main.ts) so the two can never diverge.
+  app.post("/v1/maintenance/run", async () => runMaintenance(opts?.maintenanceDeps ?? {
     repo, files,
     deleteSession: (w, id) => deleteSessionFully({ repo, orchestrator, files }, w, id),
   }));

@@ -38,6 +38,9 @@ type Unit = "hours" | "days";
 export type MaintenanceSettings = {
   cron: string;
   orphans: { enabled: boolean };
+  rejects: { enabled: boolean; keep: number; unit: Unit };
+  prices: { enabled: boolean };
+  k8s: { enabled: boolean };
   billing: { enabled: boolean; keep: number; unit: Unit };
   tokens: { enabled: boolean; keep: number; unit: Unit };
   sessions: { idle: { enabled: boolean; keep: number; unit: Unit }; completed: { enabled: boolean; keep: number; unit: Unit } };
@@ -51,6 +54,9 @@ export type MaintenanceSummary = {
     tokens: { ran: boolean; rows?: number; error?: string };
     sessions: { ran: boolean; idle?: number; completed?: number; error?: string };
     files: { ran: boolean; input?: number; output?: number; bytes?: number; error?: string };
+    rejects?: { ran: boolean; rows?: number; error?: string };
+    prices?: { ran: boolean; rows?: number; error?: string };
+    k8s?: { ran: boolean; secrets?: number; egress?: number; policies?: number; pvcs?: number; error?: string };
   };
 };
 
@@ -86,14 +92,18 @@ function RetRow({ label, hint, value, onChange }: {
 
 function sectionLines(s: MaintenanceSummary): [string, string][] {
   const sec = s.sections;
-  const line = (x: { ran: boolean; error?: string }, ok: () => string) =>
-    !x.ran ? "skipped (disabled)" : x.error ? `failed — ${x.error}` : ok();
+  const line = (x: { ran: boolean; error?: string } | undefined, ok: () => string) =>
+    !x || !x.ran ? "skipped (disabled)" : x.error ? `failed — ${x.error}` : ok();
   const half = (x: typeof sec.files, v: number | undefined, ok: (n: number) => string) =>
     x.error ? `failed — ${x.error}` : !x.ran || v === undefined ? "skipped (disabled)" : ok(v);
   return [
     ["Orphaned data", line(sec.orphans, () => `${sec.orphans.rows ?? 0} rows, ${sec.orphans.objects ?? 0} objects, ${fmtBytes(sec.orphans.bytes ?? 0)} reclaimed`)],
     ["Billing data", line(sec.billing, () => `${sec.billing.rows ?? 0} rows removed`)],
     ["Token usage", line(sec.tokens, () => `${sec.tokens.rows ?? 0} rows removed`)],
+    ["Routing rejects", line(sec.rejects, () => `${sec.rejects?.rows ?? 0} rows removed`)],
+    ["Price rows", line(sec.prices, () => `${sec.prices?.rows ?? 0} rows removed`)],
+    ["Cluster resources", line(sec.k8s, () =>
+      `${sec.k8s?.secrets ?? 0} secrets, ${sec.k8s?.egress ?? 0} egress objects, ${sec.k8s?.policies ?? 0} policies, ${sec.k8s?.pvcs ?? 0} PVCs removed`)],
     ["Sessions", line(sec.sessions, () => `${sec.sessions.idle ?? 0} idle/failed, ${sec.sessions.completed ?? 0} completed deleted`)],
     ["Input files", half(sec.files, sec.files.input, (n) => `${n} files removed`)],
     ["Output files", half(sec.files, sec.files.output, (n) => `${n} files removed, ${fmtBytes(sec.files.bytes ?? 0)} reclaimed`)],
@@ -120,6 +130,9 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
   const [doneS, setDoneS] = useState(toForm(initialMaintenance.sessions.completed));
   const [inFiles, setInFiles] = useState(toForm(initialMaintenance.files.input));
   const [outFiles, setOutFiles] = useState(toForm(initialMaintenance.files.output));
+  const [rejects, setRejects] = useState(toForm(initialMaintenance.rejects));
+  const [prices, setPrices] = useState(initialMaintenance.prices.enabled);
+  const [k8sOn, setK8sOn] = useState(initialMaintenance.k8s.enabled);
   const [runBusy, setRunBusy] = useState(false);
   const [runMsg, setRunMsg] = useState<string | null>(null);
   const [summary, setSummary] = useState<MaintenanceSummary | null>(lastRun);
@@ -140,7 +153,10 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
     retDirty(idleS, savedMaint.sessions.idle) ||
     retDirty(doneS, savedMaint.sessions.completed) ||
     retDirty(inFiles, savedMaint.files.input) ||
-    retDirty(outFiles, savedMaint.files.output);
+    retDirty(outFiles, savedMaint.files.output) ||
+    retDirty(rejects, savedMaint.rejects) ||
+    prices !== savedMaint.prices.enabled ||
+    k8sOn !== savedMaint.k8s.enabled;
 
   const save = async () => {
     setBusy(true); setMsg(null);
@@ -163,6 +179,9 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
         tokens: fromForm("Token usage", tokens),
         sessions: { idle: fromForm("Idle sessions", idleS), completed: fromForm("Completed sessions", doneS) },
         files: { input: fromForm("Input files", inFiles), output: fromForm("Output files", outFiles) },
+        rejects: fromForm("Routing rejects", rejects),
+        prices: { enabled: prices },
+        k8s: { enabled: k8sOn },
       };
     } catch (e) { setBusy(false); setMsg((e as Error).message); return; }
     const err = await submitJson("PUT", "/v1/settings", {
@@ -272,10 +291,18 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
           <Row label="Delete orphaned data" checked={orphans}
                hint="reclaims database rows and storage objects that escaped normal deletion — dead checkpoints, unreferenced skill/memory files, unclaimed objects"
                onChange={setOrphans} />
+          <Row label="Delete orphaned cluster resources" checked={k8sOn}
+               hint="removes egress proxies, network policies, vault secrets, and work volumes whose owning record is gone — 1h grace, live records always survive"
+               onChange={setK8sOn} />
+          <Row label="Delete orphaned price rows" checked={prices}
+               hint="removes prices whose pool, deployment, endpoint, or environment no longer exists"
+               onChange={setPrices} />
           <RetRow label="Clean up billing data" value={billing} onChange={setBilling}
                   hint="removes time-cost ledger entries older than this — cost history charts shrink accordingly" />
           <RetRow label="Clean up token usage" value={tokens} onChange={setTokens}
                   hint="removes gateway token metering older than this — Usage page history shrinks; session lifetime totals survive" />
+          <RetRow label="Clean up routing rejects" value={rejects} onChange={setRejects}
+                  hint="removes routing 403 diagnostic rows older than this — routing stats read recent windows only" />
           <RetRow label="Clean up idle & failed sessions" value={idleS} onChange={setIdleS}
                   hint="fully deletes sessions (events, checkpoints, work volume) with no activity for this long" />
           <RetRow label="Clean up completed sessions" value={doneS} onChange={setDoneS}
@@ -295,7 +322,7 @@ export function SettingsForm({ initial, initialLimits, initialMaintenance, initi
               {maintDirty
                 ? <span style={{ color: "var(--bad)" }}>⚠ Unsaved changes — press “Save settings” first.</span>
                 : (runMsg ?? (summary
-                  ? <>Last run <DateTime iso={summary.at} /> — {Object.values(summary.sections).some((x) => x.error) ? "completed with errors" : "completed successfully"}</>
+                  ? <>Last run <DateTime iso={summary.at} /> — {Object.values(summary.sections).some((x) => x?.error) ? "completed with errors" : "completed successfully"}</>
                   : "never run"))}
             </span>
           </label>

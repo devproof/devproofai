@@ -9,7 +9,7 @@ import { releasePendingForModel, sweepPendingLaunches } from "./launch-gate.ts";
 import { releaseWriterQueue, sweepWriterQueues } from "./writer-queue.ts";
 import { reachableLocalTargets, reachableTargets } from "./routing-rules.ts";
 import { loadMcpRegistry } from "./mcp.ts";
-import { realOrchestrator } from "./orchestrator.ts";
+import { realOrchestrator, sweepOrphanedK8s } from "./orchestrator.ts";
 import { registerPublicApi, sweepStaleUploads } from "./public-api.ts";
 import { startReconciler } from "./reconciler.ts";
 import { sweepModelRouting } from "./routing-state.ts";
@@ -224,7 +224,19 @@ const releaseWriterSlot = (sessionId: string) => {
     if (s) await releaseWriterQueue(repo, orchestrator, s.agent_id);
   })().catch((err) => console.warn(`writer-queue: release for session ${sessionId} failed:`, err));
 };
-await registerAgentRoutes(app, repo, orchestrator, files, notify, { modelPhase, mcpRegistry, settleSession: settle, releaseWriterSlot, wakeModel: wake });
+const maintenanceDeps = {
+  repo, files,
+  deleteSession: (w: string, id: string) => deleteSessionFully({ repo, orchestrator, files }, w, id),
+  sweepK8s: sweepOrphanedK8s,
+  listServing: async () => {
+    const [pools, mds] = await Promise.all([kube.list("modelpools"), kube.list("modeldeployments")]);
+    return {
+      pools: pools.map((p: any) => p.metadata?.name).filter(Boolean),
+      deployments: mds.map((d: any) => d.metadata?.name).filter(Boolean),
+    };
+  },
+};
+await registerAgentRoutes(app, repo, orchestrator, files, notify, { modelPhase, mcpRegistry, settleSession: settle, releaseWriterSlot, wakeModel: wake, maintenanceDeps });
 await registerPublicApi(app, repo, orchestrator, files, notify, { modelPhase, mcpRegistry, settleSession: settle, releaseWriterSlot, wakeModel: wake });
 // Chunked uploads that never complete leak MinIO parts — hourly abort sweep.
 sweepStaleUploads(repo, files).catch((err) => console.warn("upload sweep failed:", err));
@@ -245,10 +257,7 @@ startReconciler(repo, orchestrator, async () => {
   // A zombie-failed parent leaves nobody to collect its children's results.
   await interruptChildSessions({ repo, orchestrator }, id, settle);
 });
-startMaintenanceScheduler({
-  repo, files,
-  deleteSession: (w, id) => deleteSessionFully({ repo, orchestrator, files }, w, id),
-});
+startMaintenanceScheduler(maintenanceDeps);
 const port = Number(process.env.PORT ?? 7080);
 const host = process.env.HOST ?? "127.0.0.1";
 app.listen({ port, host }).then(async (addr) => {

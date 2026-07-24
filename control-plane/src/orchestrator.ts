@@ -339,6 +339,121 @@ export function buildEnvNetworkPolicy(environmentId: string, proxyApp: string) {
   };
 }
 
+// ── Orphaned-resource sweep (maintenance `k8s` section, spec 2026-07-24 G3) ──
+// Expected-set diff: the CALLER supplies every live owner id; anything in the
+// agents namespace whose name is id-shaped but not expected is an orphan.
+// Never reverses a name back to an id.
+
+const rendered = (id: string) => id.replace(/_/g, "-").toLowerCase();
+// Rendered forms of the two id generations: `prefix_`+12-base36 → `prefix-…`,
+// and legacy 24-hex. Anything else (chart/operator resources) never matches.
+const ID_SHAPES = [/^[a-z0-9]+-[a-z0-9]{12}$/, /^[0-9a-f]{24}$/];
+
+/** Pure: names to delete among `items` for one resource class. Keeps anything
+ *  not id-shaped, anything expected, and anything younger than graceMs (or of
+ *  unknown age — fail-safe). Exported for tests. */
+export function orphanCandidates(
+  items: { name?: string; creationTimestamp?: string | Date }[],
+  prefix: string, ownerIds: string[], graceMs: number, now: () => Date = () => new Date(),
+): string[] {
+  const expected = new Set(ownerIds.map((id) => prefix + rendered(id)));
+  const out: string[] = [];
+  for (const it of items) {
+    const name = it.name ?? "";
+    if (!name.startsWith(prefix)) continue;
+    const suffix = name.slice(prefix.length);
+    if (!ID_SHAPES.some((re) => re.test(suffix))) continue;
+    if (expected.has(name)) continue;
+    const created = it.creationTimestamp ? new Date(it.creationTimestamp).getTime() : NaN;
+    if (!(now().getTime() - created >= graceMs)) continue;
+    out.push(name);
+  }
+  return out;
+}
+
+/** Pure: /work PVCs to delete — label-driven (the devproof.ai/session label
+ *  carries the exact owner id), no name parsing at all. Exported for tests. */
+export function orphanPvcNames(
+  items: { name?: string; creationTimestamp?: string | Date; sessionLabel?: string }[],
+  sessionIds: string[], graceMs: number, now: () => Date = () => new Date(),
+): string[] {
+  const live = new Set(sessionIds);
+  const out: string[] = [];
+  for (const it of items) {
+    if (!it.name || !it.sessionLabel || live.has(it.sessionLabel)) continue;
+    const created = it.creationTimestamp ? new Date(it.creationTimestamp).getTime() : NaN;
+    if (!(now().getTime() - created >= graceMs)) continue;
+    out.push(it.name);
+  }
+  return out;
+}
+
+/** k8s glue for the maintenance `k8s` section: list per class, filter via the
+ *  pure helpers, delete (404-tolerant). Per-class isolation — a failed list
+ *  skips that class (count stays undefined) and records an error. */
+export async function sweepOrphanedK8s(input: {
+  vaultIds: string[]; environmentIds: string[]; sessionIds: string[]; graceMs: number;
+}): Promise<{ secrets?: number; egress?: number; policies?: number; pvcs?: number; errors: string[] }> {
+  const kc = new k8s.KubeConfig();
+  kc.loadFromDefault();
+  const core = kc.makeApiClient(k8s.CoreV1Api);
+  const apps = kc.makeApiClient(k8s.AppsV1Api);
+  const networking = kc.makeApiClient(k8s.NetworkingV1Api);
+  const errors: string[] = [];
+  const meta = (r: any) => ({ name: r.metadata?.name, creationTimestamp: r.metadata?.creationTimestamp });
+  const del = async (p: Promise<unknown>) => {
+    try { await p; return 1; } catch (err: any) { if (err?.code === 404) return 0; throw err; }
+  };
+  const cls = async (label: string, run: () => Promise<number>): Promise<number | undefined> => {
+    try { return await run(); }
+    catch (err) { errors.push(`${label}: ${String((err as Error)?.message ?? err)}`); return undefined; }
+  };
+
+  const secrets = await cls("secrets", async () => {
+    const res: any = await core.listNamespacedSecret({ namespace: AGENTS_NAMESPACE });
+    let n = 0;
+    for (const name of orphanCandidates((res.items ?? []).map(meta), "devproof-vault-", input.vaultIds, input.graceMs)) {
+      n += await del(core.deleteNamespacedSecret({ name, namespace: AGENTS_NAMESPACE }));
+    }
+    return n;
+  });
+  const egress = await cls("egress", async () => {
+    let n = 0;
+    const [cms, deploys, svcs]: any[] = await Promise.all([
+      core.listNamespacedConfigMap({ namespace: AGENTS_NAMESPACE }),
+      apps.listNamespacedDeployment({ namespace: AGENTS_NAMESPACE }),
+      core.listNamespacedService({ namespace: AGENTS_NAMESPACE }),
+    ]);
+    for (const name of orphanCandidates((cms.items ?? []).map(meta), "egress-", input.environmentIds, input.graceMs))
+      n += await del(core.deleteNamespacedConfigMap({ name, namespace: AGENTS_NAMESPACE }));
+    for (const name of orphanCandidates((deploys.items ?? []).map(meta), "egress-", input.environmentIds, input.graceMs))
+      n += await del(apps.deleteNamespacedDeployment({ name, namespace: AGENTS_NAMESPACE }));
+    for (const name of orphanCandidates((svcs.items ?? []).map(meta), "egress-", input.environmentIds, input.graceMs))
+      n += await del(core.deleteNamespacedService({ name, namespace: AGENTS_NAMESPACE }));
+    return n;
+  });
+  const policies = await cls("policies", async () => {
+    const res: any = await networking.listNamespacedNetworkPolicy({ namespace: AGENTS_NAMESPACE });
+    let n = 0;
+    for (const name of orphanCandidates((res.items ?? []).map(meta), "env-", input.environmentIds, input.graceMs))
+      n += await del(networking.deleteNamespacedNetworkPolicy({ name, namespace: AGENTS_NAMESPACE }));
+    return n;
+  });
+  const pvcs = await cls("pvcs", async () => {
+    const res: any = await core.listNamespacedPersistentVolumeClaim({
+      namespace: AGENTS_NAMESPACE, labelSelector: "app=devproof-session",
+    });
+    const items = (res.items ?? []).map((r: any) => ({
+      ...meta(r), sessionLabel: r.metadata?.labels?.["devproof.ai/session"],
+    }));
+    let n = 0;
+    for (const name of orphanPvcNames(items, input.sessionIds, input.graceMs))
+      n += await del(core.deleteNamespacedPersistentVolumeClaim({ name, namespace: AGENTS_NAMESPACE }));
+    return n;
+  });
+  return { secrets, egress, policies, pvcs, errors };
+}
+
 /** Pure Job body for one session turn — exported for tests (spec 2026-07-12). */
 export function buildTurnJob(session: Parameters<Orchestrator["startSession"]>[0]) {
   const turn = session.resume?.turn ?? 0;

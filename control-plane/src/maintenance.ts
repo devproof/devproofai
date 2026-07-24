@@ -19,6 +19,9 @@ export type MaintenanceSettings = {
   tokens: Retention;
   sessions: { idle: Retention; completed: Retention };
   files: { input: Retention; output: Retention };
+  rejects: Retention;
+  prices: { enabled: boolean };
+  k8s: { enabled: boolean };
 };
 export type MaintenanceSummary = {
   at: string; ms: number;
@@ -28,6 +31,9 @@ export type MaintenanceSummary = {
     tokens:   { ran: boolean; rows?: number; error?: string };
     sessions: { ran: boolean; idle?: number; completed?: number; error?: string };
     files:    { ran: boolean; input?: number; output?: number; bytes?: number; error?: string };
+    rejects:  { ran: boolean; rows?: number; error?: string };
+    prices:   { ran: boolean; rows?: number; error?: string };
+    k8s:      { ran: boolean; secrets?: number; egress?: number; policies?: number; pvcs?: number; error?: string };
   };
 };
 
@@ -45,6 +51,9 @@ export function defaultMaintenanceSettings(legacyCron?: string | null): Maintena
       input: { enabled: false, keep: 4, unit: "hours" },
       output: { enabled: false, keep: 4, unit: "hours" },
     },
+    rejects: { enabled: true, keep: 30, unit: "days" },
+    prices: { enabled: true },
+    k8s: { enabled: true },
   };
 }
 
@@ -73,6 +82,9 @@ export function mergeMaintenanceSettings(base: MaintenanceSettings, raw: unknown
       input: mergeRetention(base.files.input, m?.files?.input),
       output: mergeRetention(base.files.output, m?.files?.output),
     },
+    rejects: mergeRetention(base.rejects, m?.rejects),
+    prices: { enabled: typeof m?.prices?.enabled === "boolean" ? m.prices.enabled : base.prices.enabled },
+    k8s: { enabled: typeof m?.k8s?.enabled === "boolean" ? m.k8s.enabled : base.k8s.enabled },
   };
 }
 
@@ -88,8 +100,15 @@ export function validateMaintenanceSettings(raw: unknown): string | null {
   if (m.orphans?.enabled !== undefined && typeof m.orphans.enabled !== "boolean") {
     return "maintenance.orphans.enabled must be a boolean";
   }
+  if (m.prices?.enabled !== undefined && typeof m.prices.enabled !== "boolean") {
+    return "maintenance.prices.enabled must be a boolean";
+  }
+  if (m.k8s?.enabled !== undefined && typeof m.k8s.enabled !== "boolean") {
+    return "maintenance.k8s.enabled must be a boolean";
+  }
   const rules: [string, any][] = [
     ["billing", m.billing], ["tokens", m.tokens],
+    ["rejects", m.rejects],
     ["sessions.idle", m.sessions?.idle], ["sessions.completed", m.sessions?.completed],
     ["files.input", m.files?.input], ["files.output", m.files?.output],
   ];
@@ -195,6 +214,10 @@ export interface MaintenanceRepo extends GcRepo {
   listExpiredSessions(idleCutoffMs: number | null, completedCutoffMs: number | null):
     Promise<{ id: string; workspace_id: string; status: string }[]>;
   listExpiredFiles(kind: "upload" | "output", cutoffMs: number): Promise<{ id: string; size: number }[]>;
+  pruneRoutingRejects(cutoffMs: number): Promise<number>;
+  pruneOrphanResourcePrices(
+    kind: "pool" | "deployment" | "external" | "environment", liveRefs: string[]): Promise<number>;
+  listAllIds(table: "vaults" | "environments" | "sessions" | "external_deployments"): Promise<string[]>;
 }
 
 export type MaintenanceDeps = {
@@ -202,11 +225,18 @@ export type MaintenanceDeps = {
   files: FileStore;
   /** Full session teardown (deleteSessionFully bound to the orchestrator). */
   deleteSession: (workspaceId: string, sessionId: string) => Promise<void>;
+  /** Live pool/deployment CR names (kubestore) for the prices sweep. Absent ⇒
+   *  the pool/deployment legs fail closed. */
+  listServing?: () => Promise<{ pools: string[]; deployments: string[] }>;
+  /** Orphaned-k8s sweep (orchestrator.sweepOrphanedK8s). Absent ⇒ the k8s
+   *  section reports an error instead of silently claiming success. */
+  sweepK8s?: (input: { vaultIds: string[]; environmentIds: string[]; sessionIds: string[]; graceMs: number }) =>
+    Promise<{ secrets?: number; egress?: number; policies?: number; pvcs?: number; errors: string[] }>;
 };
 
-/** Ordered run: billing → tokens → sessions → files → orphans. Sessions free
- *  files (session_files cascade) before file cleanup; the orphan sweep mops
- *  up last. Each section is error-isolated. */
+/** Ordered run: billing → tokens → rejects → sessions → files → prices →
+ *  k8s → orphans. Sessions free files (session_files cascade) before file cleanup;
+ *  the orphan sweep mops up last. Each section is error-isolated. */
 export async function runMaintenance(deps: MaintenanceDeps, opts: { now?: () => Date } = {}): Promise<MaintenanceSummary> {
   const now = opts.now ?? (() => new Date());
   const started = now();
@@ -214,6 +244,7 @@ export async function runMaintenance(deps: MaintenanceDeps, opts: { now?: () => 
   const sections: MaintenanceSummary["sections"] = {
     orphans: { ran: false }, billing: { ran: false }, tokens: { ran: false },
     sessions: { ran: false }, files: { ran: false },
+    rejects: { ran: false }, prices: { ran: false }, k8s: { ran: false },
   };
   const guard = async (sec: { ran: boolean; error?: string }, run: () => Promise<void>) => {
     sec.ran = true;
@@ -225,6 +256,9 @@ export async function runMaintenance(deps: MaintenanceDeps, opts: { now?: () => 
   });
   if (m.tokens.enabled) await guard(sections.tokens, async () => {
     sections.tokens.rows = await deps.repo.pruneGatewayUsage(retentionMs(m.tokens));
+  });
+  if (m.rejects.enabled) await guard(sections.rejects, async () => {
+    sections.rejects.rows = await deps.repo.pruneRoutingRejects(retentionMs(m.rejects));
   });
   if (m.sessions.idle.enabled || m.sessions.completed.enabled) await guard(sections.sessions, async () => {
     const rows = await deps.repo.listExpiredSessions(
@@ -253,6 +287,45 @@ export async function runMaintenance(deps: MaintenanceDeps, opts: { now?: () => 
       sections.files[half] = count;
     }
     sections.files.bytes = bytes;
+  });
+  // Prices: per-kind fail-closed — a failed lister skips that kind only; an
+  // empty-but-successful list is valid (zero live resources ⇒ all orphaned).
+  if (m.prices.enabled) await guard(sections.prices, async () => {
+    let rows = 0;
+    const errs: string[] = [];
+    const leg = async (kind: "pool" | "deployment" | "external" | "environment", refs: () => Promise<string[]>) => {
+      try { rows += await deps.repo.pruneOrphanResourcePrices(kind, await refs()); }
+      catch (err) { errs.push(`${kind}: ${String((err as Error)?.message ?? err)}`); }
+    };
+    if (deps.listServing) {
+      let serving: { pools: string[]; deployments: string[] } | null = null;
+      try { serving = await deps.listServing(); }
+      catch (err) { errs.push(`serving: ${String((err as Error)?.message ?? err)}`); }
+      if (serving) {
+        await leg("pool", async () => serving.pools);
+        await leg("deployment", async () => serving.deployments);
+      }
+    } else errs.push("serving: no kubestore access");
+    await leg("external", () => deps.repo.listAllIds("external_deployments"));
+    await leg("environment", () => deps.repo.listAllIds("environments"));
+    sections.prices.rows = rows;
+    if (errs.length) sections.prices.error = errs.join("; ");
+  });
+  // k8s sweep: DB ids load FIRST and any failure aborts before a single
+  // delete (fail-closed — spec 2026-07-24 G3 safety rails).
+  if (m.k8s.enabled) await guard(sections.k8s, async () => {
+    if (!deps.sweepK8s) throw new Error("no k8s access");
+    const [vaultIds, environmentIds, sessionIds] = await Promise.all([
+      deps.repo.listAllIds("vaults"),
+      deps.repo.listAllIds("environments"),
+      deps.repo.listAllIds("sessions"),
+    ]);
+    const r = await deps.sweepK8s({ vaultIds, environmentIds, sessionIds, graceMs: GRACE_MS });
+    sections.k8s.secrets = r.secrets;
+    sections.k8s.egress = r.egress;
+    sections.k8s.policies = r.policies;
+    sections.k8s.pvcs = r.pvcs;
+    if (r.errors.length) sections.k8s.error = r.errors.join("; ");
   });
   if (m.orphans.enabled) await guard(sections.orphans, async () => {
     const g = await runGc(deps.repo, deps.files, { now });

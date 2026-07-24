@@ -75,6 +75,9 @@ test("defaultMaintenanceSettings: spec defaults + legacy cron fallback", () => {
   assert.deepEqual(d.sessions.completed, { enabled: false, keep: 4, unit: "hours" });
   assert.deepEqual(d.files.input, { enabled: false, keep: 4, unit: "hours" });
   assert.deepEqual(d.files.output, { enabled: false, keep: 4, unit: "hours" });
+  assert.deepEqual(d.rejects, { enabled: true, keep: 30, unit: "days" });
+  assert.deepEqual(d.prices, { enabled: true });
+  assert.deepEqual(d.k8s, { enabled: true });
   assert.equal(defaultMaintenanceSettings("*/5 * * * *").cron, "*/5 * * * *");
 });
 
@@ -85,6 +88,10 @@ test("mergeMaintenanceSettings: per-field merge over base", () => {
   assert.equal(m.billing.enabled, true);
   assert.equal(m.billing.keep, 365);          // absent field keeps base
   assert.equal(m.sessions.idle.keep, 7);      // untouched section keeps base
+  const m2 = mergeMaintenanceSettings(base, { rejects: { keep: 90 }, prices: { enabled: false }, k8s: { enabled: false } });
+  assert.deepEqual(m2.rejects, { enabled: true, keep: 90, unit: "days" }); // partial keeps base enabled/unit
+  assert.equal(m2.prices.enabled, false);
+  assert.equal(m2.k8s.enabled, false);
   const noop = mergeMaintenanceSettings(base, {});
   assert.deepEqual(noop, base);               // empty object is a no-op, not a reset
 });
@@ -97,6 +104,9 @@ test("validateMaintenanceSettings rejects bad fields", () => {
   assert.match(validateMaintenanceSettings({ billing: { keep: 1.5 } })!, /keep/);
   assert.match(validateMaintenanceSettings({ files: { input: { unit: "weeks" } } })!, /unit/);
   assert.match(validateMaintenanceSettings({ tokens: { enabled: "yes" } })!, /enabled/);
+  assert.match(validateMaintenanceSettings({ rejects: { keep: 0 } })!, /keep/);
+  assert.match(validateMaintenanceSettings({ prices: { enabled: "yes" } })!, /prices/);
+  assert.match(validateMaintenanceSettings({ k8s: { enabled: 1 } })!, /k8s/);
   assert.match(validateMaintenanceSettings("nope")!, /object/);
 });
 
@@ -109,6 +119,8 @@ function fakeDeps(settings: MS) {
   const calls = {
     cost: [] as number[], usage: [] as number[],
     deleted: [] as string[], fileRows: [] as string[], persisted: null as any,
+    rejects: [] as number[], priceKinds: [] as [string, string[]][],
+    sweeps: [] as any[],
   };
   const root = mkdtempSync(join(tmpdir(), "maint-unit-"));
   const files = localFileStore(root);
@@ -128,14 +140,19 @@ function fakeDeps(settings: MS) {
       async deleteFileRecordById(id: string) { calls.fileRows.push(id); return null; },
       async listOrphanFileRows() { return []; },
       async objectKeyExists() { return true; },
+      async pruneRoutingRejects(ms: number) { calls.rejects.push(ms); return 4; },
+      async pruneOrphanResourcePrices(kind: string, refs: string[]) { calls.priceKinds.push([kind, refs]); return 2; },
+      async listAllIds(table: string) { return [`${table}_id1`]; },
     },
     files,
     deleteSession: async (_w: string, id: string) => { calls.deleted.push(id); },
+    listServing: async () => ({ pools: ["p1"], deployments: ["d1"] }),
+    sweepK8s: async (input: any) => { calls.sweeps.push(input); return { secrets: 1, egress: 3, policies: 1, pvcs: 2, errors: [] }; },
   };
   return { deps: deps as any, calls, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-test("runMaintenance: disabled sections are skipped (ran:false), orphans run by default", async () => {
+test("runMaintenance: default sections — retention legs skipped, sweeps run", async () => {
   const { deps, calls, cleanup } = fakeDeps(defaultMaintenanceSettings());
   try {
     const s = await runMaintenance(deps);
@@ -144,6 +161,14 @@ test("runMaintenance: disabled sections are skipped (ran:false), orphans run by 
     assert.equal(s.sections.sessions.ran, false);
     assert.equal(s.sections.files.ran, false);
     assert.equal(s.sections.orphans.ran, true);
+    assert.equal(s.sections.rejects.ran, true);      // default ON (spec 2026-07-24)
+    assert.deepEqual(calls.rejects, [30 * 86_400_000]);
+    assert.equal(s.sections.rejects.rows, 4);
+    assert.equal(s.sections.prices.ran, true);       // default ON
+    assert.equal(s.sections.prices.rows, 8);         // 4 kinds × stub 2
+    assert.deepEqual(calls.priceKinds.map(([k]) => k), ["pool", "deployment", "external", "environment"]);
+    assert.deepEqual(calls.priceKinds[0][1], ["p1"]);
+    assert.deepEqual(calls.priceKinds[2][1], ["external_deployments_id1"]);
     assert.deepEqual(calls.cost, []);
     assert.deepEqual(calls.deleted, []);
     assert.ok(calls.persisted, "summary persisted");
@@ -187,5 +212,86 @@ test("runMaintenance: a section error is recorded and later sections still run",
     assert.equal(s.sections.tokens.rows, 5, "tokens still ran");
     assert.equal(s.sections.orphans.ran, true, "orphans still ran");
     assert.ok(calls.persisted);
+  } finally { cleanup(); }
+});
+
+test("runMaintenance prices: failed serving list skips pool/deployment legs only", async () => {
+  const { deps, calls, cleanup } = fakeDeps(defaultMaintenanceSettings());
+  deps.listServing = async () => { throw new Error("no CRDs"); };
+  try {
+    const s = await runMaintenance(deps);
+    assert.deepEqual(calls.priceKinds.map(([k]: [string, string[]]) => k), ["external", "environment"]);
+    assert.equal(s.sections.prices.rows, 4);
+    assert.match(s.sections.prices.error!, /serving.*no CRDs/);
+  } finally { cleanup(); }
+});
+
+test("runMaintenance prices: absent listServing dep fails the serving legs closed", async () => {
+  const { deps, calls, cleanup } = fakeDeps(defaultMaintenanceSettings());
+  delete deps.listServing;
+  try {
+    const s = await runMaintenance(deps);
+    assert.deepEqual(calls.priceKinds.map(([k]: [string, string[]]) => k), ["external", "environment"]);
+    assert.match(s.sections.prices.error!, /no kubestore access/);
+  } finally { cleanup(); }
+});
+
+test("runMaintenance rejects: disabled section is skipped", async () => {
+  const settings = defaultMaintenanceSettings();
+  settings.rejects.enabled = false;
+  const { deps, calls, cleanup } = fakeDeps(settings);
+  try {
+    const s = await runMaintenance(deps);
+    assert.equal(s.sections.rejects.ran, false);
+    assert.deepEqual(calls.rejects, []);
+  } finally { cleanup(); }
+});
+
+test("runMaintenance k8s: id sets flow to the sweep, counts land in the summary", async () => {
+  const { deps, calls, cleanup } = fakeDeps(defaultMaintenanceSettings());
+  try {
+    const s = await runMaintenance(deps);
+    assert.equal(s.sections.k8s.ran, true);
+    assert.equal(calls.sweeps.length, 1);
+    assert.deepEqual(calls.sweeps[0].vaultIds, ["vaults_id1"]);
+    assert.deepEqual(calls.sweeps[0].environmentIds, ["environments_id1"]);
+    assert.deepEqual(calls.sweeps[0].sessionIds, ["sessions_id1"]);
+    assert.equal(calls.sweeps[0].graceMs, 3_600_000);
+    assert.equal(s.sections.k8s.secrets, 1);
+    assert.equal(s.sections.k8s.egress, 3);
+    assert.equal(s.sections.k8s.policies, 1);
+    assert.equal(s.sections.k8s.pvcs, 2);
+    assert.equal(s.sections.k8s.error, undefined);
+  } finally { cleanup(); }
+});
+
+test("runMaintenance k8s: absent dep reports error, class errors joined", async () => {
+  const { deps, cleanup } = fakeDeps(defaultMaintenanceSettings());
+  delete deps.sweepK8s;
+  try {
+    const s = await runMaintenance(deps);
+    assert.equal(s.sections.k8s.ran, true);
+    assert.match(s.sections.k8s.error!, /no k8s access/);
+  } finally { cleanup(); }
+  const withErrs = fakeDeps(defaultMaintenanceSettings());
+  withErrs.deps.sweepK8s = async () => ({ secrets: 1, errors: ["pvcs: list timed out"] });
+  try {
+    const s = await runMaintenance(withErrs.deps);
+    assert.equal(s.sections.k8s.secrets, 1);
+    assert.equal(s.sections.k8s.pvcs, undefined, "failed class stays undefined");
+    assert.match(s.sections.k8s.error!, /pvcs: list timed out/);
+  } finally { withErrs.cleanup(); }
+});
+
+test("runMaintenance k8s: DB id-list failure aborts before the sweep (fail-closed)", async () => {
+  const { deps, calls, cleanup } = fakeDeps(defaultMaintenanceSettings());
+  deps.repo.listAllIds = async (table: string) => {
+    if (table === "sessions") throw new Error("db down");
+    return [];
+  };
+  try {
+    const s = await runMaintenance(deps);
+    assert.match(s.sections.k8s.error!, /db down/);
+    assert.equal(calls.sweeps.length, 0, "sweep never called on partial DB data");
   } finally { cleanup(); }
 });
