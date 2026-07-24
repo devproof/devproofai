@@ -38,6 +38,9 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
     const r = await wsGet<any>(`/v1/routings/${encodeURIComponent(name)}`).catch(() => null);
     routingWindows[name] = r?.name ? (r.minContextTokens ?? null) : null;
   }));
+  // Gateway base URL for the Webhooks tab's curl examples — same resolution
+  // as the routing Connect tab (routings/[name]/page.tsx).
+  const gatewayUrl = process.env.DEVPROOF_GATEWAY_PUBLIC_URL ?? "http://localhost:14000";
   return (
     <>
       <div className="crumbs"><Link href="/agents">Agents</Link> / <CopyId id={agent.id} /> · last modified <DateTime iso={agent.updated_at} /></div>
@@ -59,7 +62,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
       <AgentTabs agent={agent} observability={obs} sessions={sessions.sessions} sessionCount={sessions.count}
                  initialTab={sp.page ? "sessions" : "agent"}
                  skills={skills} environments={environments} vaults={vaults} routingWindows={routingWindows}
-                 agents={allAgents} wikis={wikis} />
+                 agents={allAgents} wikis={wikis} gatewayUrl={gatewayUrl} />
     </>
   );
 }

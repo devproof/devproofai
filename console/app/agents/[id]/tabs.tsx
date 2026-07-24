@@ -4,16 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 import { Pager } from "../../lib/pager";
 import { DateTime } from "../../lib/datetime";
+import { WebhooksTab } from "./webhooks";
 
 const fmt = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
 export function AgentTabs({ agent, observability, sessions, sessionCount = 0, initialTab = "agent",
-                            skills = [], environments = [], vaults = [], routingWindows = {}, agents = [], wikis = [] }:
+                            skills = [], environments = [], vaults = [], routingWindows = {}, agents = [], wikis = [],
+                            gatewayUrl = "http://localhost:14000" }:
   { agent: any; observability: any; sessions: any[]; sessionCount?: number;
-    initialTab?: "agent" | "sessions" | "obs"; skills?: any[]; environments?: any[]; vaults?: any[];
-    routingWindows?: Record<string, number | null>; agents?: any[]; wikis?: any[] }) {
-  const [tab, setTab] = useState<"agent" | "sessions" | "obs">(initialTab);
+    initialTab?: "agent" | "sessions" | "obs" | "webhooks"; skills?: any[]; environments?: any[]; vaults?: any[];
+    routingWindows?: Record<string, number | null>; agents?: any[]; wikis?: any[]; gatewayUrl?: string }) {
+  const [tab, setTab] = useState<"agent" | "sessions" | "obs" | "webhooks">(initialTab);
   const [vi, setVi] = useState(0);
   const v = agent.versions[vi];
   const skillOf = (id: string) => skills.find((s) => s.id === id);
@@ -32,6 +34,7 @@ export function AgentTabs({ agent, observability, sessions, sessionCount = 0, in
         <button className={tab === "agent" ? "active" : ""} onClick={() => setTab("agent")}>Agent</button>
         <button className={tab === "sessions" ? "active" : ""} onClick={() => setTab("sessions")}>Sessions</button>
         <button className={tab === "obs" ? "active" : ""} onClick={() => setTab("obs")}>Observability</button>
+        <button className={tab === "webhooks" ? "active" : ""} onClick={() => setTab("webhooks")}>Webhooks</button>
       </div>
 
       {tab === "agent" && (
@@ -159,6 +162,8 @@ export function AgentTabs({ agent, observability, sessions, sessionCount = 0, in
           </table></div>
         </>
       )}
+
+      {tab === "webhooks" && <WebhooksTab agentId={agent.id} gatewayUrl={gatewayUrl} />}
     </>
   );
 }

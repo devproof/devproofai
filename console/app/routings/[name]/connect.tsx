@@ -3,35 +3,8 @@
 // Codex, and Hermes, prefilled with this deployment's name + gateway URL.
 // Key values are shown once at creation and never retrievable, so snippets
 // carry a dpk_… placeholder pointing at the API Keys page.
-import { useState } from "react";
 import Link from "next/link";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button className="iconbtn" title={copied ? "Copied!" : "Copy"} aria-label="Copy snippet"
-      onClick={async () => {
-        try { await navigator.clipboard.writeText(text); } catch { return; }
-        setCopied(true); setTimeout(() => setCopied(false), 1500);
-      }}>
-      {copied
-        ? <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 8.5 6 12.5 14 3.5" /></svg>
-        : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5" /><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" /></svg>}
-    </button>
-  );
-}
-
-function Snippet({ label, text }: { label?: string; text: string }) {
-  return (
-    <>
-      {label && <div className="hint" style={{ marginTop: 8 }}>{label}</div>}
-      <div style={{ position: "relative", marginTop: 6 }}>
-        <pre className="block" style={{ margin: 0 }}>{text}</pre>
-        <div style={{ position: "absolute", top: 6, right: 6 }}><CopyButton text={text} /></div>
-      </div>
-    </>
-  );
-}
+import { Snippet } from "../../lib/snippet";
 
 export function ConnectTab({ name, gatewayUrl, kind, contextTokens }:
   { name: string; gatewayUrl: string; kind: string; contextTokens?: number | null }) {
