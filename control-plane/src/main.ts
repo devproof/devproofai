@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { registerAgentRoutes } from "./agents-api.ts";
 import { loadCatalog } from "./catalog.ts";
-import { createPool, migrate, NotifyHub } from "./db.ts";
+import { createPool, DEFAULT_STARTUP_WAIT_SEC, migrate, NotifyHub, waitForPostgres } from "./db.ts";
 import { ensureGatewayAuthSecret, ensureInternalKeyInAgentsNs } from "./gateway-secret.ts";
 import { localFileStore, s3ClientOptions, s3FileStore } from "./filestore.ts";
 import { realKubeStore } from "./kubestore.ts";
@@ -35,7 +35,18 @@ const mcpRegistryPath =
 
 const localServing = localServingEnabled();
 
+// Startup-dependency wait (spec 2026-08-05): one shared budget for boot-time
+// dependencies. Unset/blank/invalid ⇒ DEFAULT_STARTUP_WAIT_SEC (db.ts — the
+// single source of truth); the chart's controlplane.startupWaitSeconds is a
+// pure override and ships unset.
+const startupWaitSec = (() => {
+  const raw = process.env.DEVPROOF_STARTUP_WAIT_SEC;
+  if (raw === undefined || raw.trim() === "") return DEFAULT_STARTUP_WAIT_SEC;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_STARTUP_WAIT_SEC;
+})();
 const pool = createPool();
+await waitForPostgres(pool, { budgetMs: startupWaitSec * 1000 });
 await migrate(pool);
 // Internal key for session pods → gateway; gateway pods read the same Secret.
 try {
@@ -200,12 +211,14 @@ if (process.env.DEVPROOF_S3_ENDPOINT || process.env.DEVPROOF_S3_BUCKET) {
   };
   const { S3Client, CreateBucketCommand } = await import("@aws-sdk/client-s3");
   const c = new S3Client(s3ClientOptions(cfg));
-  // Ensure the bucket exists before serving. Retry with backoff: on a fresh
-  // install the CP races the bundled MinIO's first boot (PVC provisioning),
-  // and external S3 can blip too. Only "already exists" is success; anything
+  // Ensure the bucket exists before serving. Retry on the shared startup
+  // budget (DEVPROOF_STARTUP_WAIT_SEC, spec 2026-08-05): on a fresh install
+  // the CP races the bundled MinIO's first boot (PVC provisioning), and
+  // external S3 can blip too. Only "already exists" is success; anything
   // else after the deadline crashes the boot so k8s restarts the pod — a
   // silently missing bucket fails every file op later ("The specified bucket
   // does not exist").
+  const s3Deadline = Date.now() + startupWaitSec * 1000;
   for (let attempt = 1; ; attempt++) {
     try {
       await c.send(new CreateBucketCommand({ Bucket: bucket }));
@@ -213,8 +226,8 @@ if (process.env.DEVPROOF_S3_ENDPOINT || process.env.DEVPROOF_S3_BUCKET) {
     } catch (e) {
       const name = (e as Error)?.name ?? "";
       if (name === "BucketAlreadyOwnedByYou" || name === "BucketAlreadyExists") break;
-      if (attempt >= 30) throw e;
-      console.log(`bucket ${bucket} not ready (${name || e}), retry ${attempt}/30`);
+      if (Date.now() + 2000 > s3Deadline) throw e;
+      console.log(`bucket ${bucket} not ready (${name || e}), retry ${attempt} (budget ${startupWaitSec}s)`);
       await new Promise((r) => setTimeout(r, 2000));
     }
   }

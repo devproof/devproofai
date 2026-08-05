@@ -37,6 +37,10 @@ spec:
           imagePullPolicy: {{ .Values.controlplane.image.pullPolicy }}
           env:
             - { name: HOST, value: "0.0.0.0" }
+            {{- /* kindIs, not `with`: 0 is falsy in Go templates and must still render (0 = fail fast) */}}
+            {{- if not (kindIs "invalid" .Values.controlplane.startupWaitSeconds) }}
+            - { name: DEVPROOF_STARTUP_WAIT_SEC, value: {{ .Values.controlplane.startupWaitSeconds | quote }} }
+            {{- end }}
             - name: DEVPROOF_DATABASE_URL
               valueFrom:
                 secretKeyRef: { name: devproof-db, key: database-url }

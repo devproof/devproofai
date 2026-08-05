@@ -12,6 +12,46 @@ export function createPool(): pg.Pool {
   });
 }
 
+// Startup-dependency wait (spec 2026-08-05): on cluster cold start the CP races
+// Postgres (PVC provisioning, image pull, init). Retry connection-class errors
+// within a budget instead of crash-looping; anything else — bad credentials,
+// missing database — fails immediately so misconfiguration surfaces at once.
+// Node socket errors and Postgres SQLSTATEs both arrive on err.code.
+// THE default for the boot-dependency wait — single source of truth. main.ts
+// falls back to it when DEVPROOF_STARTUP_WAIT_SEC is unset/blank/invalid, and
+// the chart deliberately ships startupWaitSeconds unset so this value rules
+// unless an operator overrides it.
+export const DEFAULT_STARTUP_WAIT_SEC = 600;
+
+const RETRYABLE_STARTUP_CODES = new Set([
+  "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH",
+  "ENOTFOUND", "EAI_AGAIN", // service DNS may not be registered yet
+  "57P03", // "the database system is starting up"
+]);
+
+export async function waitForPostgres(
+  pool: { query: (text: string) => Promise<unknown> },
+  opts: { budgetMs?: number; delayMs?: number; sleep?: (ms: number) => Promise<void>; now?: () => number } = {},
+): Promise<void> {
+  const budgetMs = opts.budgetMs ?? DEFAULT_STARTUP_WAIT_SEC * 1000;
+  const delayMs = opts.delayMs ?? 2_000;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const now = opts.now ?? Date.now;
+  const deadline = now() + budgetMs;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await pool.query("SELECT 1");
+      if (attempt > 1) console.log(`postgres ready (attempt ${attempt})`);
+      return;
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? "";
+      if (!RETRYABLE_STARTUP_CODES.has(code) || now() + delayMs > deadline) throw err;
+      console.log(`postgres not ready (${code}), retrying in ${delayMs / 1000}s…`);
+      await sleep(delayMs);
+    }
+  }
+}
+
 export async function migrate(pool: pg.Pool): Promise<void> {
   const dir = fileURLToPath(new URL("../sql", import.meta.url));
   // Tracked migrations (Postgrator, spec 2026-07-19): sql/*.sql run exactly once,

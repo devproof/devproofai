@@ -220,6 +220,12 @@ controlplane:
   # default-gpu. Existing names are skipped; deleting the resources later is
   # fine (they are not resurrected). Set false to disable.
   seedDefaults: true
+  # Boot-dependency wait budget in seconds: how long the control plane retries
+  # unreachable Postgres/S3 at startup before crashing (a cold cluster races
+  # PVC provisioning and image pulls). Unset ⇒ the control plane's built-in
+  # default (600s, DEFAULT_STARTUP_WAIT_SEC in control-plane/src/db.ts — the
+  # single source of truth). 0 = fail fast on the first error.
+  startupWaitSeconds:
   image:
     repository: ghcr.io/devproof/devproofai-control-plane
     tag: 0.1.9
