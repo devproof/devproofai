@@ -1,6 +1,6 @@
 # Third-party notices
 
-Devproof AI itself is licensed under the [Elastic License 2.0](LICENSE). This
+Devproof AI itself is licensed under the [Apache License 2.0](LICENSE). This
 file covers the third-party software the project **redistributes** — container
 images republished under `ghcr.io/devproof/`, upstream code baked into images
 this repo builds, and the packaged Helm dependency. Software that is merely

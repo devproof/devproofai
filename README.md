@@ -1,6 +1,7 @@
 # DEVPROOF.AI
 
-**Own your scalable AI.** Self-hosted LLM serving + managed agents on Kubernetes.
+**Own your scalable AI.** Open-source managed AI agents on Kubernetes — with
+self-hosted LLM serving underneath.
 
 Run open models and autonomous agents on infrastructure you control. One Helm
 install gives you two planes on your own cluster: a **serving plane** (curated model catalog, one-click deployments,
@@ -8,6 +9,12 @@ autoscaling, OpenAI- & Anthropic-compatible endpoints) and a **managed-agents
 plane** (Anthropic-style agent sessions with tools, skills, memory, wikis and
 credential vaults — running against the models you just deployed, or any
 external API).
+
+A **self-hosted alternative to hosted managed-agent platforms**: same programming
+model, but the sessions run as pods in your cluster, under your jurisdiction,
+against models you choose. It is Kubernetes-native by design rather than a single
+container — the operator, per-session pods, scale-to-zero and rule-based routing
+exist so one install can carry thousands of concurrent sessions.
 
 ## Features
 
@@ -268,10 +275,10 @@ evaluated values, and the wire messages:
 
 ## License
 
-The platform is source-available under the [Elastic License 2.0](LICENSE): you
-may use, copy, modify, and self-host it (including commercially), but you may
-not provide it to third parties as a hosted or managed service.
+Devproof AI is open source under the [Apache License 2.0](LICENSE) — use it,
+modify it, self-host it, and build on it commercially, including as a hosted
+service. No contributor licence agreement, no open-core carve-outs: the whole
+platform is in this repository.
 
-The Python client (`python-client/`) is open source under the
-[Apache License 2.0](python-client/LICENSE), so it can be embedded freely in
-your own products.
+The Python client (`python-client/`) is likewise
+[Apache 2.0](python-client/LICENSE).

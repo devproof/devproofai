@@ -66,6 +66,5 @@ subclasses of `APIStatusError` (`AuthenticationError`, `NotFoundError`,
 
 ## License
 
-[Apache License 2.0](LICENSE) — unlike the platform itself (Elastic License
-2.0), the client is open source and can be embedded freely in your own
-products.
+[Apache License 2.0](LICENSE) — same licence as the platform itself, so the
+client can be embedded freely in your own products.
