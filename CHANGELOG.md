@@ -6,6 +6,37 @@
 - Catalog: 4 more 16 GB-class models — Apertus 8B, OLMo 3 7B, LFM2.5 8B A1B,
   Ling mini 2.0 (GGUF Q4, all released within the last 12 months).
 
+### Changed
+- Gateway base image repinned from the July `main-stable` digest (the
+  v1.92/1.93 line) to LiteLLM **v1.106.0**, now pinned by version tag *and*
+  digest so the Dockerfile states which LiteLLM it carries. Reviewed every
+  upstream breaking change from v1.94 to v1.106: the one that reaches an
+  operator is LiteLLM 1.104's refusal to start on an unset/empty/publicly-known
+  `LITELLM_MASTER_KEY` (the chart generates one; an `existingSecret` must carry
+  a non-empty `master-key`). Nothing in Devproof's config needs changing:
+  `timeout`/`stream_timeout`/`request_timeout` — now enforced on `/v1/messages`
+  since v1.94 — are not set, the response cache is off, `model_info` carries no
+  pricing, and `LITELLM_RUST` stays unset (which, with LiteLLM's rollout
+  catalog, keeps every Devproof surface on the Python path).
+- Operator: the ISVC `nodeAffinity` mirror of a pool's node selector is gone.
+  LLMkube applies ISVC `nodeSelector`/`tolerations` to CPU pods since 0.9.17, so
+  the duplicate is no longer needed; placement moves are detected from
+  `nodeSelector`/`tolerations` alone, so the stale `affinity` on existing
+  InferenceServices is pruned by server-side apply (the operator owns the
+  field) without registering as a placement move — which is what keeps the
+  per-service model-cache PVC from being deleted and the weights from being
+  re-downloaded. Requires llmkube >= 0.9.17; see deploy/README.md for the
+  upgrade ordering.
+- Bundled LLMkube subchart upgraded 0.9.10 → 0.10.4 (mirrored controller image
+  follows). Additive for Devproof: no InferenceService or Model CRD property
+  removed, `required` unchanged, every passthrough value key the umbrella sets
+  still present with the same default; two new CRDs (`modelpools`,
+  `federatedclusters`, both unused) and widened controller RBAC. The upstream
+  controller now ships a watch canary ON by default (`--watch-canary-interval=60s`,
+  `--watch-canary-fail-after=5m`): it restarts the operator pod when its own
+  informer stops observing its Lease writes. 0.9.17 fixed the upstream bug that
+  dropped ISVC `nodeSelector`/`tolerations` on CPU pods.
+
 ## v0.1.8 — 2026-07-23
 
 ### Fixed

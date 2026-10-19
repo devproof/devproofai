@@ -46,6 +46,24 @@ const ext = (over: Partial<any> = {}) => ({
   model_id: "gpt-4o", key_version: 3, has_key: true, ...over,
 });
 
+test("no timeout key reaches litellm_params (enforced on /v1/messages since LiteLLM v1.94)", () => {
+  // LiteLLM v1.94 started honouring timeout/stream_timeout/request_timeout on
+  // /v1/messages, where they had been ignored; stream_timeout caps the gap
+  // between ANY two chunks, and a CPU llama.cpp prefill is seconds to tens of
+  // seconds, so a value here truncates long streams and held wake requests.
+  // Devproof sets none — this pins that, since nothing else would notice.
+  const cfg = parse(buildGatewayConfig([dep("a", "Ready")], [ext()]));
+  for (const entry of cfg.model_list) {
+    for (const key of ["timeout", "stream_timeout", "request_timeout"]) {
+      assert.ok(
+        !(key in entry.litellm_params),
+        `${key} must not be set on ${entry.model_name}: enforced on /v1/messages since LiteLLM v1.94`,
+      );
+    }
+  }
+  assert.equal(cfg.litellm_settings.request_timeout, undefined);
+});
+
 test("external entries map to provider-native litellm params", () => {
   const cfg = parse(buildGatewayConfig([], [
     ext(),

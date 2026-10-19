@@ -9,6 +9,6 @@ version: 0.1.10
 appVersion: "0.1.10"
 dependencies:
   - name: llmkube
-    version: 0.9.10
+    version: 0.10.4
     repository: https://defilantech.github.io/LLMKube
     condition: llmkube.enabled

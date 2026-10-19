@@ -32,7 +32,7 @@ registryAuth:
 # Passthrough to the pinned LLMkube dependency (see README audit table).
 # The values below make the inherited chart follow the same contract as our
 # own components (resources/nodeSelector/tolerations + disk class/size);
-# defaults mirror upstream 0.9.10 so overriding one key never surprises another.
+# defaults mirror upstream 0.10.4 so overriding one key never surprises another.
 llmkube:
   enabled: true
   imagePullSecrets: []   # set [{name: <registryAuth secret>}] when registryAuth is enabled
@@ -46,7 +46,7 @@ llmkube:
     # devproofai-curl exist as copies only until upstream is deterministic.
     image:
       repository: ghcr.io/devproof/devproofai-llmkube-controller
-      tag: "0.9.10"
+      tag: "0.10.4"
     initContainer:
       repository: docker.io/curlimages/curl
       tag: "8.18.0"
@@ -174,15 +174,22 @@ s3:
 
 gateway:
   image:
-    # LiteLLM (digest-pinned main-stable) + asyncpg baked in — gateway/Dockerfile.
+    # LiteLLM v1.106.0 (version tag + digest-pinned) + asyncpg — gateway/Dockerfile.
     repository: ghcr.io/devproof/devproofai-gateway
     tag: 0.1.10
     pullPolicy: IfNotPresent
-  # LiteLLM master key (LITELLM_MASTER_KEY): LiteLLM's own admin credential —
-  # without it the proxy boots with a CRITICAL warning and treats everyone as
-  # a no-admin internal user. Devproof API traffic stays governed by
-  # custom_auth (console dpk_ keys + the CP internal key); the master key is
-  # for LiteLLM admin surfaces only.
+  # LiteLLM master key (LITELLM_MASTER_KEY): LiteLLM's own admin credential.
+  # Since LiteLLM 1.104 the proxy REFUSES TO START on an unset, empty or
+  # publicly-known key (it used to boot with a CRITICAL warning and treat
+  # everyone as a no-admin internal user). The chart's own paths are safe:
+  # masterKey "" generates 24 alphanumerics (verified: the rendered Secret is
+  # never empty, with or without a cluster). What 1.104 makes fatal is a
+  # BRING-YOUR-OWN `existingSecret` whose `master-key` is present but EMPTY —
+  # the gateway then CrashLoops instead of warning. A `master-key` that is
+  # absent entirely fails earlier, at the kubelet (CreateContainerConfigError),
+  # since the env var is a required secretKeyRef. Devproof API traffic stays
+  # governed by custom_auth (console dpk_ keys + the CP internal key); the
+  # master key is for LiteLLM admin surfaces only.
   auth:
     # Fixed key value; "" = generated once (24 alphanumerics) and kept stable
     # across upgrades via the devproof.stableSecretValue lookup.

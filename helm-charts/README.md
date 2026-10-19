@@ -57,7 +57,7 @@ CRDs (ModelPool, ModelDeployment); the LLMkube subchart's own CRDs
 (InferenceService, ModelRouter, Model) are governed by its own
 `llmkube.crds.install` value.
 
-## LLMkube passthrough (audited 2026-07-18, chart 0.9.4; re-verified 2026-07-19 against 0.9.7 — upstream values contract unchanged, only a new `multitenancy.enabled` key, default false; re-verified 2026-07-23 against 0.9.10 — passthrough keys unchanged, new top-level keys only: `pyrra`, `gpuSharing`, `runtimeImages`, `platformFloors`, all default-off/empty)
+## LLMkube passthrough (audited 2026-07-18, chart 0.9.4; re-verified 2026-07-19 against 0.9.7 — upstream values contract unchanged, only a new `multitenancy.enabled` key, default false; re-verified 2026-07-23 against 0.9.10 — passthrough keys unchanged, new top-level keys only: `pyrra`, `gpuSharing`, `runtimeImages`, `platformFloors`, all default-off/empty; re-verified 2026-10-19 against 0.10.4 — every passthrough key we set still exists with the same default, new top-level keys only: `grafana`, `modelAttestation`, `metalRelay`, `extraObjects`, plus `controllerManager.{watchCanary,reconcileTimeout,driRenderGID,caCertConfigMap}` — `watchCanary` is the one that ships ON)
 
 Everything under the `llmkube:` values key passes through to the upstream
 LLMkube chart (pinned dependency). Scheduling/resources/PVC requirements map

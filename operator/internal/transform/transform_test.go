@@ -155,41 +155,16 @@ func TestBuildDefaultEngineOmitsRuntime(t *testing.T) {
 	}
 }
 
-func TestBuildAffinityFromNodeSelector(t *testing.T) {
+func TestBuildNeverRendersAffinity(t *testing.T) {
 	md, pool := fixtures()
-	pool.Spec.NodeSelector = map[string]string{"zone": "a", "disk": "ssd"} // unsorted on purpose
-	_, isvc := Build(md, pool, 1, EngineImages{})
-
-	terms, found, err := unstructured.NestedSlice(isvc.Object, "spec", "affinity", "nodeAffinity",
-		"requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms")
-	if err != nil || !found || len(terms) != 1 {
-		t.Fatalf("expected exactly one nodeSelectorTerm, found=%v len=%d err=%v", found, len(terms), err)
-	}
-	exprs := terms[0].(map[string]interface{})["matchExpressions"].([]interface{})
-	if len(exprs) != 2 {
-		t.Fatalf("expected 2 matchExpressions, got %d", len(exprs))
-	}
-	// Sorted by key — random map order would churn the SSA apply and roll pods.
-	first := exprs[0].(map[string]interface{})
-	second := exprs[1].(map[string]interface{})
-	if first["key"] != "disk" || second["key"] != "zone" {
-		t.Fatalf("matchExpressions must be key-sorted, got %v then %v", first["key"], second["key"])
-	}
-	if first["operator"] != "In" {
-		t.Fatalf("operator must be In, got %v", first["operator"])
-	}
-	vals := first["values"].([]interface{})
-	if len(vals) != 1 || vals[0] != "ssd" {
-		t.Fatalf("values must be the single selector value, got %v", vals)
-	}
-}
-
-func TestBuildOmitsAffinityWhenNoSelector(t *testing.T) {
-	md, pool := fixtures()
-	pool.Spec.NodeSelector = nil
+	pool.Spec.NodeSelector = map[string]string{"zone": "a"}
 	_, isvc := Build(md, pool, 1, EngineImages{})
 	if _, found, _ := unstructured.NestedMap(isvc.Object, "spec", "affinity"); found {
-		t.Fatal("affinity must be omitted when the pool has no nodeSelector")
+		t.Fatal("affinity must not be rendered: LLMkube applies ISVC nodeSelector to CPU pods since 0.9.17")
+	}
+	sel, found, _ := unstructured.NestedStringMap(isvc.Object, "spec", "nodeSelector")
+	if !found || sel["zone"] != "a" {
+		t.Fatalf("nodeSelector must still carry the pool selector, found=%v got %v", found, sel)
 	}
 }
 
@@ -266,10 +241,13 @@ func TestPlacementChanged(t *testing.T) {
 		t.Fatal("a nodeSelector value change must be reported")
 	}
 
+	// The upgrade case: live ISVCs still carry the affinity Build no longer
+	// renders. Server-side apply prunes it; it is not a placement move, so it
+	// must not trigger a cache bounce (PVC delete + weights re-download).
 	aff := base()
 	aff["affinity"] = map[string]interface{}{"nodeAffinity": map[string]interface{}{}}
-	if !PlacementChanged(isvcWithSpec(base()), isvcWithSpec(aff)) {
-		t.Fatal("adding affinity must be reported")
+	if PlacementChanged(isvcWithSpec(aff), isvcWithSpec(base())) {
+		t.Fatal("a live-only affinity is not a placement move: SSA prunes it without a cache bounce")
 	}
 
 	tol := base()
@@ -284,7 +262,7 @@ func TestPlacementChanged(t *testing.T) {
 	}
 }
 
-// Build is deterministic (sorted affinity keys), so re-rendering the same
+// Build is deterministic, so re-rendering the same
 // pool must never look like a placement change — the no-churn guarantee.
 func TestPlacementChangedStableAcrossRebuilds(t *testing.T) {
 	md, pool := fixtures()

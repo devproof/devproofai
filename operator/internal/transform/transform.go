@@ -3,7 +3,6 @@
 package transform
 
 import (
-	"sort"
 	"strconv"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -159,35 +158,6 @@ func Build(md *v1alpha1.ModelDeployment, pool *v1alpha1.ModelPool, replicas int3
 		isvcSpec["tolerations"] = tols
 	}
 
-	// LLMkube (verified through 0.9.7) renders ISVC nodeSelector/tolerations into the engine pod
-	// template only for GPU/DRA workloads (deployment_builder.go gates them
-	// behind gpuCount > 0) — CPU pods silently ignore them. Affinity is applied
-	// unconditionally, so the selector is additionally expressed as a required
-	// node affinity. Keys are sorted: a random map order would change the
-	// applied ISVC every reconcile and roll pods forever.
-	if len(pool.Spec.NodeSelector) > 0 {
-		keys := make([]string, 0, len(pool.Spec.NodeSelector))
-		for k := range pool.Spec.NodeSelector {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		exprs := make([]interface{}, 0, len(keys))
-		for _, k := range keys {
-			exprs = append(exprs, map[string]interface{}{
-				"key": k, "operator": "In", "values": []interface{}{pool.Spec.NodeSelector[k]},
-			})
-		}
-		isvcSpec["affinity"] = map[string]interface{}{
-			"nodeAffinity": map[string]interface{}{
-				"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
-					"nodeSelectorTerms": []interface{}{
-						map[string]interface{}{"matchExpressions": exprs},
-					},
-				},
-			},
-		}
-	}
-
 	isvc := &unstructured.Unstructured{Object: map[string]interface{}{
 		"apiVersion": llmkubeAPIVersion,
 		"kind":       "InferenceService",
@@ -259,14 +229,19 @@ func ClampReplicas(md *v1alpha1.ModelDeployment, current int64) int32 {
 }
 
 // PlacementChanged reports whether the scheduling-relevant ISVC spec fields —
-// nodeSelector, affinity, tolerations — differ between the live object and
-// the desired rendering. Used by the reconciler to detect placement moves
-// that strand the engine pods on the old node's cache PVC (node-local
-// storage): those require deleting the per-service cache PVC and bouncing
-// the pods. Absent fields compare as nil, and Build renders deterministically
-// (sorted affinity keys), so identical placement never reports a change.
+// nodeSelector, tolerations — differ between the live object and the desired
+// rendering. Used by the reconciler to detect placement moves that strand the
+// engine pods on the old node's cache PVC (node-local storage): those require
+// deleting the per-service cache PVC and bouncing the pods. Absent fields
+// compare as nil, so identical placement never reports a change.
+//
+// affinity is deliberately NOT compared: Build no longer renders it (LLMkube
+// applies ISVC nodeSelector/tolerations to CPU pods since 0.9.17, #1504), so the
+// field survives only on ISVCs applied by an older operator — there server-side
+// apply prunes it, and a prune is not a placement move, so it must not bounce
+// the cache.
 func PlacementChanged(live, desired *unstructured.Unstructured) bool {
-	for _, field := range []string{"nodeSelector", "affinity", "tolerations"} {
+	for _, field := range []string{"nodeSelector", "tolerations"} {
 		a, _, _ := unstructured.NestedFieldNoCopy(live.Object, "spec", field)
 		b, _, _ := unstructured.NestedFieldNoCopy(desired.Object, "spec", field)
 		if !apiequality.Semantic.DeepEqual(a, b) {

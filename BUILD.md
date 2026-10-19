@@ -32,6 +32,14 @@ overwritten). Then **release**, run by hand on that tag ref: it builds from
 the tag — the image version comes from `scripts/version.sh` against it
 (asserted equal), so git and GHCR can't drift. No manual tagging; nothing
 publishes automatically.
+
+**Third-party mirrors are NOT part of either workflow.** The `devproofai-postgres`,
+`devproofai-squid` and `devproofai-llmkube-controller` tags that `helm-charts/values.yaml`
+pins are pushed by hand with `scripts/mirror-images.sh` (needs a GHCR token with
+`write:packages`), and must be pushed BEFORE a release that references a new mirror tag:
+`release.yml` will happily package a chart whose mirror tag does not exist, and the
+resulting `helm upgrade` then leaves the OLD pod Running while the new one sits in
+ImagePullBackOff, instead of failing loudly.
 The version rides into every image as build arg `DEVPROOF_VERSION` →
 `ENV DEVPROOF_VERSION` + the `org.opencontainers.image.version` label, and:
 
@@ -63,7 +71,7 @@ versions).
 | control-plane | repo root | `control-plane/Dockerfile` | needs `catalog/` in context; runtime = tsx, same as dev |
 | console | `console/` | `console/Dockerfile` | Next standalone; `DEVPROOF_API` build arg bakes the `/api` rewrite target |
 | session-runner | repo root | `session-runner/Dockerfile` | dev tags stay `devNN` (bump on every change); the current frozen `requirements.txt` was captured from image dev50, built as dev51 with an identical dep set (verified in-image: 112/112 tests) |
-| gateway | `gateway/` | `gateway/Dockerfile` | LiteLLM `main-stable` (digest-pinned) + `asyncpg==0.31.0` baked in — no runtime pip install / PyPI egress at pod boot |
+| gateway | `gateway/` | `gateway/Dockerfile` | LiteLLM `v1.106.0` (version tag + digest-pinned) + `asyncpg==0.31.0` baked in — no runtime pip install / PyPI egress at pod boot |
 
 ## What makes it deterministic
 
