@@ -17,3 +17,7 @@ tmp/
 TODO.txt
 private/
 helm-charts/charts/
+.agents/
+.claude/
+AGENTS.md
+skills-lock.json
