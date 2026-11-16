@@ -6,6 +6,20 @@
 - Catalog: 4 more 16 GB-class models — Apertus 8B, OLMo 3 7B, LFM2.5 8B A1B,
   Ling mini 2.0 (GGUF Q4, all released within the last 12 months).
 
+### Fixed
+- Local models no longer grow until they are OOM-killed. llama.cpp keeps a
+  host-RAM prompt cache (default cap 8 GiB) that grows with every distinct long
+  prompt, on top of the footprint the catalog sizes for, while engine pods run
+  with a memory limit equal to their request (measured: a 0.6B model went from
+  4.3 GiB to 11 GiB over seven 10k-token prompts). The operator now disables
+  that cache on every llama.cpp deployment (`LLAMA_ARG_CACHE_RAM=0`), which
+  keeps memory flat. Upgrading rolls each llama.cpp engine pod once; when more
+  conversations than a replica has slots (4) alternate on it, their prompts are
+  reprocessed instead of restored from RAM.
+- Catalog: `qwen3-0.6b-q4` (3Gi → 5Gi) and `qwen3-4b-instruct-2507-q4` (5Gi →
+  10Gi) were OOM-killed at startup; they are now sized from their measured
+  footprint at the served 32k context (4.3 GiB and 8.9 GiB).
+
 ### Changed
 - Dependencies upgraded to the latest releases. Console: Next.js 15 → 16
   (Turbopack production builds; `tsconfig.json` moves to `jsx: react-jsx` as

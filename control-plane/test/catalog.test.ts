@@ -186,6 +186,11 @@ test("every catalog entry carries valid per-replica resources (spec 2026-07-16)"
   assert.deepEqual(byId.get("llama-3.3-70b-instruct")!.resources, { cpu: "23", memory: "280Gi" });
   assert.deepEqual(byId.get("qwen3-235b-a22b-instruct-2507-q4")!.resources, { cpu: "47", memory: "560Gi" });
   assert.deepEqual(byId.get("qwen3-coder-480b-a35b-instruct-q4")!.resources, { cpu: "189", memory: "1998Gi" });
+  // Measured exceptions to the CPU rule (2026-11-17): both were OOM-killed at
+  // startup on the rule's value — the KV cache at the served 32k context
+  // dwarfs what diskGB suggests. Footprints: 4.3 GiB and 8.9 GiB.
+  assert.deepEqual(byId.get("qwen3-0.6b-q4")!.resources, { cpu: "2", memory: "5Gi" });
+  assert.deepEqual(byId.get("qwen3-4b-instruct-2507-q4")!.resources, { cpu: "2", memory: "10Gi" });
 });
 
 test("resolveDeployment sources resources from the catalog entry", () => {

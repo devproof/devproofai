@@ -92,6 +92,19 @@ func Build(md *v1alpha1.ModelDeployment, pool *v1alpha1.ModelPool, replicas int3
 	// (llamacpp) applies — vllm stays accepted-but-unmapped, as before.
 	if md.Spec.Engine == "sglang" {
 		isvcSpec["runtime"] = "sglang"
+	} else {
+		// llama.cpp keeps a host-RAM prompt cache (--cache-ram, default 8192
+		// MiB) that grows with every distinct long prompt, on top of the
+		// model + KV footprint the catalog `resources` size for. Engine pods
+		// carry a memory limit equal to their request, so the cache gets them
+		// OOM-killed under varied traffic (measured 2026-11-17: a 0.6B model
+		// went from 4.3 GiB to 11 GiB over seven 10k-token prompts). Disabled,
+		// the footprint stays flat. Set through the env var rather than the
+		// flag: a llama.cpp build that predates it ignores the variable, where
+		// an unknown flag would stop the server from starting.
+		isvcSpec["env"] = []interface{}{
+			map[string]interface{}{"name": "LLAMA_ARG_CACHE_RAM", "value": "0"},
+		}
 	}
 	// Engine image (Devproof mirror): deployments requesting GPUs (resources
 	// gpu key) get the CUDA variant. llamacpp-runtime only — sglang keeps its

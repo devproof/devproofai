@@ -435,3 +435,25 @@ func TestBuildImagePullSecret(t *testing.T) {
 		t.Fatalf("no pull secret configured must leave imagePullSecrets unset")
 	}
 }
+
+// llama.cpp's host-RAM prompt cache must stay off: engine pods run with a
+// memory limit equal to their request, and the cache (default cap 8 GiB)
+// grows past it under varied traffic.
+func TestBuildDisablesLlamaCppPromptCache(t *testing.T) {
+	md, pool := fixtures()
+	_, isvc := Build(md, pool, 1, EngineImages{})
+	env, found, _ := unstructured.NestedSlice(isvc.Object, "spec", "env")
+	if !found || len(env) != 1 {
+		t.Fatalf("llama.cpp deployments must carry exactly the cache env, got %v", env)
+	}
+	e := env[0].(map[string]interface{})
+	if e["name"] != "LLAMA_ARG_CACHE_RAM" || e["value"] != "0" {
+		t.Fatalf("want LLAMA_ARG_CACHE_RAM=0, got %v", e)
+	}
+
+	md.Spec.Engine = "sglang"
+	_, isvc = Build(md, pool, 1, EngineImages{})
+	if _, found, _ := unstructured.NestedSlice(isvc.Object, "spec", "env"); found {
+		t.Fatal("sglang must not carry the llama.cpp cache env")
+	}
+}

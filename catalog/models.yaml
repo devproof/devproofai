@@ -406,7 +406,10 @@ models:
     reasoning:
       efforts: { off: 0, low: 1024, medium: 4096, high: 16384 }
     requirements: { vramGB: 0, diskGB: 1, gpus: 0 }
-    resources: { cpu: "2", memory: "3Gi" }
+    # Measured, not the (diskGB+2)Gi rule: 4.3 GiB at the served 32k context
+    # (llama.cpp b11854, 2026-11-17) — its KV cache is ~3.5 GiB, far above
+    # what a 0.4 GB file suggests. 3Gi was OOM-killed at startup.
+    resources: { cpu: "2", memory: "5Gi" }
     capacityProfiles:
       - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 18 }
 
@@ -531,7 +534,9 @@ models:
     toolCalling: strong
     contextTokens: 262144
     requirements: { vramGB: 0, diskGB: 3, gpus: 0 }
-    resources: { cpu: "2", memory: "5Gi" }
+    # Measured, not the (diskGB+2)Gi rule: 8.9 GiB at the served 32k context
+    # (llama.cpp b11854, 2026-11-17). 5Gi was OOM-killed at startup.
+    resources: { cpu: "2", memory: "10Gi" }
     capacityProfiles:
       - { gpuType: cpu, instanceType: cpu-4vcpu, gpusPerReplica: 0, vramGB: 0, estTokensPerSec: 9 }
 
