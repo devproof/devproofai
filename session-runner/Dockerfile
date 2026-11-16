@@ -11,10 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && rm -rf /var/lib/apt/lists/*
 
 # All Python deps — runner loop (httpx/anyio), the default analysis stack, and
-# the headless plotting stack (kaleido pinned <1: v1 needs external Chrome;
+# the headless plotting stack (kaleido pinned <1: v1 needs external Chrome —
+# which in turn holds plotly on 6.x, since plotly 7 refuses kaleido <1;
 # excluded as GUI-bound/unmaintained: pyqtgraph, vispy, ggplot, cufflinks,
 # chartify) — come from one fully-frozen requirements.txt (== pins incl.
-# transitives, frozen from the dev50 image). Regenerate per BUILD.md
+# transitives, last re-resolved 2026-11-16 for dev56). Regenerate per BUILD.md
 # "Updating pins"; never add loose specifiers here.
 COPY session-runner/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt

@@ -7,6 +7,18 @@
   Ling mini 2.0 (GGUF Q4, all released within the last 12 months).
 
 ### Changed
+- Dependencies upgraded to the latest releases. Console: Next.js 15 → 16
+  (Turbopack production builds; `tsconfig.json` moves to `jsx: react-jsx` as
+  Next 16 requires), React 19.3, TypeScript 5.9 → 7.0. Control plane:
+  `@kubernetes/client-node` 1.4 → 2.0, Fastify 5.12, `pg` 8.23, AWS S3 SDK
+  3.1170, TypeScript 7.0. Operator: Kubernetes libraries 0.36 → 0.37.2 and
+  controller-runtime 0.24 → 0.25.3. Gateway: `asyncpg` 0.31 → 0.32. Session
+  runner: the frozen Python set re-resolved (pandas 3.1, numpy 2.5, pyarrow 26,
+  pillow 13, bokeh 3.10, …). Deliberately held: `plotly` stays on 6.x (plotly 7
+  requires `kaleido>=1`, which needs an external Chrome the image does not
+  ship), `@types/node` stays on 24 to match the Node 24 runtime, and the Go
+  toolchain stays on 1.26 (so indirect Go modules follow the direct ones
+  rather than their own newest releases, some of which need Go 1.27).
 - Gateway base image repinned from the July `main-stable` digest (the
   v1.92/1.93 line) to LiteLLM **v1.106.0**, now pinned by version tag *and*
   digest so the Dockerfile states which LiteLLM it carries. Reviewed every

@@ -70,8 +70,8 @@ versions).
 | operator | `operator/` | `operator/Dockerfile` | static Go, `-trimpath`, distroless |
 | control-plane | repo root | `control-plane/Dockerfile` | needs `catalog/` in context; runtime = tsx, same as dev |
 | console | `console/` | `console/Dockerfile` | Next standalone; `DEVPROOF_API` build arg bakes the `/api` rewrite target |
-| session-runner | repo root | `session-runner/Dockerfile` | dev tags stay `devNN` (bump on every change); the current frozen `requirements.txt` was captured from image dev50, built as dev51 with an identical dep set (verified in-image: 112/112 tests) |
-| gateway | `gateway/` | `gateway/Dockerfile` | LiteLLM `v1.106.0` (version tag + digest-pinned) + `asyncpg==0.31.0` baked in — no runtime pip install / PyPI egress at pod boot |
+| session-runner | repo root | `session-runner/Dockerfile` | dev tags stay `devNN` (bump on every change); the frozen `requirements.txt` was last re-resolved on 2026-11-16 and built as dev56 (in-image: 165/165 tests + a render smoke of every plotting lib); `plotly` is held on 6.x because 7 requires `kaleido>=1`, which needs an external Chrome |
+| gateway | `gateway/` | `gateway/Dockerfile` | LiteLLM `v1.106.0` (version tag + digest-pinned) + `asyncpg==0.32.0` baked in — no runtime pip install / PyPI egress at pod boot |
 
 ## What makes it deterministic
 
