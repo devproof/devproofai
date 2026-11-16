@@ -186,6 +186,10 @@ test("routing names become blackhole model_list entries (spec 2026-07-16)", () =
   // it is a loud hook-bug signal.
   assert.equal(r.litellm_params.api_base, "http://devproof-routing-unresolved.invalid");
   assert.equal(r.model_info.devproof_routing, true);
+  // Not the openai provider: count_tokens for a routing name is answered from
+  // this entry, and LiteLLM v1.108+ would call an openai entry's count API at
+  // the blackhole and return its 500 instead of a local estimate.
+  assert.equal(r.litellm_params.model, "hosted_vllm/main-route");
 });
 
 test("a routing shadowing a same-named deployment emits ONE entry, no blackhole (spec 2026-07-16)", () => {

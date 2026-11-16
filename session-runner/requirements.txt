@@ -60,14 +60,12 @@ requests==2.34.2
 rpds-py==2026.9.1
 scipy==1.18.1
 seaborn==0.13.2
-six==1.17.0
 statsmodels==0.15.0
 toolz==1.2.0
 tornado==6.6.1
 tqdm==4.70.1
 typing_extensions==4.16.0
 tzdata==2026.6
-uc-micro-py==2.0.0
 urllib3==2.8.0
 vl-convert-python==1.9.0.post1
 wrapt==2.5.2

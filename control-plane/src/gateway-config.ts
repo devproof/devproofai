@@ -88,12 +88,19 @@ export function buildGatewayConfig(
   // the same name (spec 2026-07-16): skip the blackhole then — two same-named
   // entries form a LiteLLM load-balance group and real requests to the
   // resolved target would round-robin onto the blackhole.
+  //
+  // Provider is hosted_vllm, NOT openai (LiteLLM v1.108+): /v1/messages/count_tokens
+  // never runs the pre-call hook, so it counts against THIS entry, and for an
+  // openai-provider entry LiteLLM now calls the provider's count API at
+  // api_base and answers its failure — a 500 off the blackhole — instead of
+  // estimating locally. hosted_vllm has no count API, so the routing name keeps
+  // its local estimate (what external Claude Code clients got before).
   const emitted = new Set(model_list.map((m) => m.model_name));
   for (const name of opts.routingNames ?? []) {
     if (emitted.has(name)) continue;
     model_list.push({
       model_name: name,
-      litellm_params: { model: `openai/${name}`, api_base: "http://devproof-routing-unresolved.invalid", api_key: "none" },
+      litellm_params: { model: `hosted_vllm/${name}`, api_base: "http://devproof-routing-unresolved.invalid", api_key: "none" },
       model_info: { devproof_routing: true },
     });
   }

@@ -20,13 +20,16 @@ $Registry = if ($env:REGISTRY) { $env:REGISTRY } else { "ghcr.io/devproof" }
 # (AGPL §4/§6: license text, copyright notices and directions to the
 # Corresponding Source must accompany the copy — and the source annotation
 # this script stamps would point at devproofai, which carries none of it).
-# values.yaml pulls it from quay.io/minio/minio instead — MinIO's own
-# registry, no pull limits, so the mirror bought nothing. Weigh the licence
+# values.yaml pulls it from docker.io/pgsty/minio instead — the maintained
+# fork's own repository (upstream minio/minio is archived and withdrew its
+# images), accepting Docker Hub's pull limits for it. Weigh the licence
 # before adding any copyleft image here; see THIRD-PARTY-NOTICES.md.
 $Mirrors = @(
-    @{ Src = "postgres:17.10-alpine";                        Dst = "devproofai-postgres:17.10-alpine" }
-    @{ Src = "ubuntu/squid:6.13-25.04_edge";                 Dst = "devproofai-squid:6.13" }
-    @{ Src = "ghcr.io/defilantech/llmkube-controller:0.10.4"; Dst = "devproofai-llmkube-controller:0.10.4" }
+    @{ Src = "postgres:17.12-alpine";                        Dst = "devproofai-postgres:17.12-alpine" }
+    # Pinned by digest: the upstream `_edge` tag moves (it is named 7.2 but
+    # carried Squid 7.7 when mirrored); the mirror tag names the real version.
+    @{ Src = "ubuntu/squid:7.2-26.04_edge@sha256:42decc7f79b4e1044f4fe9b3a855af2cbfc76652f3191694726e21058443edc9"; Dst = "devproofai-squid:7.7" }
+    @{ Src = "ghcr.io/defilantech/llmkube-controller:0.10.18"; Dst = "devproofai-llmkube-controller:0.10.18" }
 )
 
 # The source annotation makes GHCR list the package under the devproofai
@@ -49,4 +52,4 @@ foreach ($m in $Mirrors) {
 }
 
 Write-Host "Done. Verify anonymously with:"
-Write-Host "  docker manifest inspect $Registry/devproofai-postgres:17.10-alpine"
+Write-Host "  docker manifest inspect $Registry/devproofai-postgres:17.12-alpine"

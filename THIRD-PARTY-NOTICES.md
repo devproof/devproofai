@@ -28,14 +28,14 @@ these only to avoid Docker Hub pull limits.
 
 | Mirror | Upstream image | Project & source | License |
 | --- | --- | --- | --- |
-| `devproofai-postgres:17.10-alpine` | `postgres:17.10-alpine` (Docker Official Image) | PostgreSQL — https://github.com/postgres/postgres · image: https://github.com/docker-library/postgres | [PostgreSQL License](https://www.postgresql.org/about/licence/) (BSD-style) |
-| `devproofai-squid:6.13` | `ubuntu/squid:6.13-25.04_edge` | Squid — http://www.squid-cache.org/ · source: https://github.com/squid-cache/squid | GPL-2.0-or-later |
-| `devproofai-llmkube-controller:0.10.4` | `ghcr.io/defilantech/llmkube-controller:0.10.4` | LLMKube — https://github.com/defilantech/LLMKube | Apache-2.0 |
+| `devproofai-postgres:17.12-alpine` | `postgres:17.12-alpine` (Docker Official Image) | PostgreSQL — https://github.com/postgres/postgres · image: https://github.com/docker-library/postgres | [PostgreSQL License](https://www.postgresql.org/about/licence/) (BSD-style) |
+| `devproofai-squid:7.7` | `ubuntu/squid:7.2-26.04_edge` (digest-pinned in `scripts/mirror-images.sh`; the upstream tag is named 7.2 but carries Squid 7.7) | Squid — http://www.squid-cache.org/ · source: https://github.com/squid-cache/squid | GPL-2.0-or-later |
+| `devproofai-llmkube-controller:0.10.18` | `ghcr.io/defilantech/llmkube-controller:0.10.18` | LLMKube — https://github.com/defilantech/LLMKube | Apache-2.0 |
 
 **Squid (GPL-2.0-or-later).** We redistribute an unmodified binary
-distribution. The Corresponding Source for release 6.13 is published by the
+distribution. The Corresponding Source for release 7.7 is published by the
 Squid project at http://www.squid-cache.org/Versions/ and, for the Ubuntu
-packaging in this image, via `apt-get source squid` on Ubuntu 25.04. We make
+packaging in this image, via `apt-get source squid` on Ubuntu 26.04. We make
 no modifications to Squid; the per-environment proxy configuration Devproof
 generates (`control-plane/src/egress.ts`) is a configuration file consumed at
 runtime, not a derivative of Squid's source.
@@ -44,7 +44,7 @@ runtime, not a derivative of Squid's source.
 
 | Our image | Bundled upstream | Project & source | License |
 | --- | --- | --- | --- |
-| `devproofai-gateway` | `ghcr.io/berriai/litellm:v1.106.0` (version tag + digest-pinned base image; see `gateway/Dockerfile`) | LiteLLM — https://github.com/BerriAI/litellm | MIT |
+| `devproofai-gateway` | `ghcr.io/berriai/litellm:v1.109.1` (version tag + digest-pinned base image; see `gateway/Dockerfile`) | LiteLLM — https://github.com/BerriAI/litellm | MIT |
 
 `devproofai-gateway` adds Devproof's own callback module and `asyncpg` on top
 of the LiteLLM base image; LiteLLM itself is unmodified.
@@ -53,7 +53,7 @@ of the LiteLLM base image; LiteLLM itself is unmodified.
 
 | Dependency | Version | Source | License |
 | --- | --- | --- | --- |
-| `llmkube` | 0.10.4 | https://github.com/defilantech/LLMKube (chart repo: https://defilantech.github.io/LLMKube) | Apache-2.0 |
+| `llmkube` | 0.10.18 | https://github.com/defilantech/LLMKube (chart repo: https://defilantech.github.io/LLMKube) | Apache-2.0 |
 
 The chart tarball is vendored into the released `devproofai-helm` package by
 `helm dependency build`. `scripts/patch-llmkube-schema.sh` modifies **only**
@@ -69,16 +69,16 @@ between its publisher and the operator who deploys it.
 
 | Image | Project & source | License |
 | --- | --- | --- |
-| `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` | MinIO — https://github.com/minio/minio | AGPL-3.0-or-later |
+| `docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z` | MinIO, community-maintained fork — https://github.com/pgsty/minio (upstream https://github.com/minio/minio is archived and no longer publishes images) | AGPL-3.0-or-later |
 | `docker.io/curlimages/curl:8.18.0` (LLMKube init container) | curl — https://github.com/curl/curl | curl license (MIT-style) |
 | llama.cpp engine images (selected by LLMKube per deployment) | llama.cpp — https://github.com/ggml-org/llama.cpp | MIT |
 
 **MinIO (AGPL-3.0-or-later).** Deliberately *not* mirrored under
 `ghcr.io/devproof` (decision 2026-07-21): republishing an AGPL binary would
 make this project a redistributor, with the notice and Corresponding Source
-obligations of AGPL §4/§6. quay.io is MinIO's official registry and imposes no
-pull limits, so pulling from it directly costs nothing and keeps the boundary
-clean. Devproof AI's control plane communicates with MinIO exclusively over
+obligations of AGPL §4/§6. The chart pulls the image straight from the fork's
+own Docker Hub repository instead, which keeps the boundary clean (Docker Hub
+pull limits apply to it, unlike the mirrored images). Devproof AI's control plane communicates with MinIO exclusively over
 the S3 HTTP API, as a separate process in a separate pod — an arm's-length
 aggregation, not a combined work. MinIO is also optional: set
 `minio.enabled=false` and point `s3.endpoint` at any S3-compatible store.

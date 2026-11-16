@@ -1,6 +1,6 @@
 dependencies:
 - name: llmkube
   repository: https://defilantech.github.io/LLMKube
-  version: 0.10.4
-digest: sha256:a59b514ee4914292d4fd2186dccf3c2fb2eb6d1a6cc5212022b936f0b2324371
-generated: "2026-10-19T19:59:17.0108332+02:00"
+  version: 0.10.18
+digest: sha256:656bca28fd7d6ffac2493113b008a5b220e30f601de80cf69ee3ed6aae5684e6
+generated: "2026-11-17T11:20:18.926671+01:00"

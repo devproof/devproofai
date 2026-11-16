@@ -16,9 +16,49 @@
   runner: the frozen Python set re-resolved (pandas 3.1, numpy 2.5, pyarrow 26,
   pillow 13, bokeh 3.10, …). Deliberately held: `plotly` stays on 6.x (plotly 7
   requires `kaleido>=1`, which needs an external Chrome the image does not
-  ship), `@types/node` stays on 24 to match the Node 24 runtime, and the Go
-  toolchain stays on 1.26 (so indirect Go modules follow the direct ones
-  rather than their own newest releases, some of which need Go 1.27).
+  ship). Indirect Go modules follow the direct ones rather than their own
+  newest releases (the newest kube-openapi needs structured-merge-diff v7,
+  which the 0.37 Kubernetes libraries do not build against).
+- Base images moved to the current releases, all still pinned by digest:
+  console and control plane Node 24 → 26 LTS (`node:26-slim`, Debian 13) with
+  npm 12.2.2 and `@types/node` 26; operator build stage Go 1.26 → 1.27
+  (`go.mod` now `go 1.27.4`) on a `distroless/static-debian13` runtime;
+  session runner Python 3.12 → 3.14 with the frozen requirements re-resolved
+  for it; gateway LiteLLM v1.106.0 → **v1.109.1** (what `main-stable` now
+  points at). CI follows: Node 26, Python 3.14 for the runner suite, and a
+  Postgres 17 service to match the bundled major.
+- LiteLLM v1.109.1: every release note from v1.106.1 on was reviewed and the
+  wire contracts re-run live. One fix was needed. Since v1.108 a failed
+  provider token count is returned as an error instead of falling back to a
+  local estimate, and `/v1/messages/count_tokens` counts against the routing's
+  placeholder model entry — a 500 for every routing name, on the route
+  external Claude Code clients call. The placeholder is now a `hosted_vllm`
+  entry, which has no count API, so routing names get the local estimate
+  again. Visible changes that need no action: routing 403s now arrive in the
+  Anthropic error envelope (`{"type":"error","error":{"type":"permission_error",…}}`),
+  and a stream cut mid-flight ends with an `api_error` event, which the
+  session runner retries.
+- Bundled LLMkube subchart 0.10.4 → **0.10.18** (mirrored controller image
+  follows). CRDs are additive. Upgrading rolls every llama.cpp engine pod once
+  as the new controller starts — upstream changed the pod template and now
+  pins the default engine image (`llama.cpp:server-b11854` instead of the
+  floating `server` tag) — with a short serving gap per model; model-cache
+  volumes survive and weights are not re-downloaded. The init image
+  deliberately stays on upstream's default `curlimages/curl:8.18.0`: 8.23.0
+  runs under a different uid/gid than the controller's init-container user and
+  fsGroup defaults and loses write access to the model cache.
+- Bundled Postgres 17.10 → **17.12** (same major, no data migration).
+- Bundled MinIO now comes from the community-maintained fork,
+  `docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z`. Upstream `minio/minio`
+  is archived and withdrew its images from quay.io and Docker Hub, so the old
+  `quay.io/minio/minio` pin no longer pulled and a fresh install came up
+  without file storage. Drop-in: same server contract, existing data volumes
+  stay readable. Still AGPL and still not mirrored.
+- Egress proxy Squid 6.13 → **7.7** (`ubuntu/squid:7.2-26.04_edge`, mirrored by
+  digest as `devproofai-squid:7.7`). The Ubuntu 26.04 image runs non-root and
+  names its binary `squid-gnutls`, so the proxy pod now resolves the binary at
+  start and works with either image generation. Existing environments keep
+  their current proxy image and command until they are next saved.
 - Gateway base image repinned from the July `main-stable` digest (the
   v1.92/1.93 line) to LiteLLM **v1.106.0**, now pinned by version tag *and*
   digest so the Dockerfile states which LiteLLM it carries. Reviewed every

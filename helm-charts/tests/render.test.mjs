@@ -36,7 +36,7 @@ test("default render succeeds", () => {
 
 test("bundled postgres renders workload, pvc, and both secrets", () => {
   const out = render(["--set", "postgres.auth.appPassword=fixed-app-pw"]);
-  assert.ok(out.includes("image: ghcr.io/devproof/devproofai-postgres:17.10-alpine"));
+  assert.ok(out.includes("image: ghcr.io/devproof/devproofai-postgres:17.12-alpine"));
   assert.ok(out.includes("name: devproof-pg-data"));
   assert.ok(out.includes("admin-password:"));
   assert.ok(out.includes("app-password:"));
@@ -75,7 +75,7 @@ test("bundled minio renders with generated secret", () => {
   const out = render();
   // Pulled from MinIO's own registry, never a ghcr.io/devproof mirror: MinIO
   // is AGPL and mirroring it would make us a redistributor (THIRD-PARTY-NOTICES.md).
-  assert.ok(out.includes("image: quay.io/minio/minio:"));
+  assert.ok(out.includes("image: docker.io/pgsty/minio:"));
   assert.ok(!out.includes("devproofai-minio"));
   assert.ok(out.includes("MINIO_ROOT_USER:"));
   assert.ok(out.includes("name: devproof-minio-data"));
@@ -138,7 +138,7 @@ test("controlplane renders with minio-backed S3 env and namespace envs", () => {
   assert.ok(/DEVPROOF_S3_ENDPOINT[\s\S]*?http:\/\/minio\.devproof\.svc\.cluster\.local:9000/.test(out));
   assert.ok(out.includes("DEVPROOF_AGENTS_NAMESPACE"));
   assert.ok(/DEVPROOF_RUNNER_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-session-runner:\d/.test(out));
-  assert.ok(/DEVPROOF_EGRESS_PROXY_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-squid:6\.13/.test(out));
+  assert.ok(/DEVPROOF_EGRESS_PROXY_IMAGE[^\n]*ghcr\.io\/devproof\/devproofai-squid:7\.7/.test(out));
   assert.ok(out.includes("DEVPROOF_EGRESS_PROXY_POD"));
   assert.ok(/HOST[\s\S]*?0\.0\.0\.0/.test(out));
 });

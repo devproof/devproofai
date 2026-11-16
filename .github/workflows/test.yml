@@ -29,7 +29,7 @@ jobs:
       NODE_OPTIONS: "--disable-warning=DEP0040 --disable-warning=DEP0169"
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: devproof
           POSTGRES_PASSWORD: devproof-dev
@@ -45,11 +45,11 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
           cache-dependency-path: control-plane/package-lock.json
-      # Match the image's npm (node 24 bundles 11.16.0; the Dockerfile pins 12).
-      - run: npm install -g npm@12.0.1
+      # Match the image's npm (node 26 bundles 11.20.0; the Dockerfile pins 12).
+      - run: npm install -g npm@12.2.2
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
-        with: { python-version: "3.12" }
+        with: { python-version: "3.14" }
       - run: grep -E "^(httpx|anyio|h11|httpcore|idna|certifi)==" requirements.txt > /tmp/test-reqs.txt && pip install -r /tmp/test-reqs.txt
       - run: python -m unittest discover -s tests -p "test_*.py"
 
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5   # v4 targets Node 20 (deprecated on runners)
       - uses: actions/setup-node@v7
-        with: { node-version: 24 }
+        with: { node-version: 26 }
       # dependency build resolves Chart.lock but still needs the repo definition
       # (fresh runners have no helm repos; fails with "no repository definition").
       - run: helm repo add llmkube https://defilantech.github.io/LLMKube

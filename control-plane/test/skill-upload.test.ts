@@ -80,7 +80,7 @@ test("zip with backslash entry names (Windows Compress-Archive) is accepted and 
   try {
     const buf = zipOfBackslash({ "wrap/SKILL.md": "v1", "wrap/scripts/analyze.py": "print(1)" });
     const r = await storeSkillPackage({ repo: repo as any, files }, "wsA", "backslash-demo", "demo.zip", buf);
-    assert.ok("skill" in r, "error" in r ? r.error : undefined);
+    assert.ok("skill" in r, "error" in r ? r.error : "expected a skill");
     const skillId = (r as { skill: { id: string } }).skill.id;
     assert.equal((await files.get(`wsA/skills/${skillId}/SKILL.md`)).toString(), "v1");
     assert.equal((await files.get(`wsA/skills/${skillId}/scripts/analyze.py`)).toString(), "print(1)");

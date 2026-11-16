@@ -32,7 +32,7 @@ registryAuth:
 # Passthrough to the pinned LLMkube dependency (see README audit table).
 # The values below make the inherited chart follow the same contract as our
 # own components (resources/nodeSelector/tolerations + disk class/size);
-# defaults mirror upstream 0.10.4 so overriding one key never surprises another.
+# defaults mirror upstream 0.10.18 so overriding one key never surprises another.
 llmkube:
   enabled: true
   imagePullSecrets: []   # set [{name: <registryAuth secret>}] when registryAuth is enabled
@@ -46,7 +46,7 @@ llmkube:
     # devproofai-curl exist as copies only until upstream is deterministic.
     image:
       repository: ghcr.io/devproof/devproofai-llmkube-controller
-      tag: "0.10.4"
+      tag: "0.10.18"
     initContainer:
       repository: docker.io/curlimages/curl
       tag: "8.18.0"
@@ -84,7 +84,7 @@ agents:
   egressProxy:
     image:
       repository: ghcr.io/devproof/devproofai-squid
-      tag: "6.13"
+      tag: "7.7"
     resources:
       requests:
         cpu: 50m
@@ -101,7 +101,7 @@ postgres:
   enabled: true
   image:
     repository: ghcr.io/devproof/devproofai-postgres
-    tag: 17.10-alpine
+    tag: 17.12-alpine
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -141,8 +141,12 @@ minio:
   enabled: true
   image:
     # AGPL: never mirror to ghcr.io/devproof — see THIRD-PARTY-NOTICES.md.
-    repository: quay.io/minio/minio
-    tag: RELEASE.2025-09-07T16-13-09Z
+    # pgsty/minio is the community-maintained continuation of MinIO: upstream
+    # minio/minio is archived and its images were withdrawn from quay.io and
+    # Docker Hub (the old quay.io/minio/minio pin no longer pulls). Drop-in —
+    # same binary contract, existing /data volumes stay readable.
+    repository: docker.io/pgsty/minio
+    tag: RELEASE.2026-08-04T00-00-00Z
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -174,7 +178,7 @@ s3:
 
 gateway:
   image:
-    # LiteLLM v1.106.0 (version tag + digest-pinned) + asyncpg — gateway/Dockerfile.
+    # LiteLLM v1.109.1 (version tag + digest-pinned) + asyncpg — gateway/Dockerfile.
     repository: ghcr.io/devproof/devproofai-gateway
     tag: 0.1.10
     pullPolicy: IfNotPresent

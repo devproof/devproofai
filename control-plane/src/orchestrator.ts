@@ -14,7 +14,7 @@ const RUNNER_IMAGE = process.env.DEVPROOF_RUNNER_IMAGE ?? "devproof/session-runn
 // the chart (agents.egressProxy). Fallbacks match the chart defaults so the
 // out-of-cluster dev CP behaves like a chart-deployed one.
 const EGRESS_PROXY_IMAGE =
-  process.env.DEVPROOF_EGRESS_PROXY_IMAGE ?? "ghcr.io/devproof/devproofai-squid:6.13";
+  process.env.DEVPROOF_EGRESS_PROXY_IMAGE ?? "ghcr.io/devproof/devproofai-squid:7.7";
 // Pull secret for the private ghcr.io/devproof images (chart registryAuth →
 // DEVPROOF_IMAGE_PULL_SECRET; the chart creates the Secret in the agents
 // namespace). Empty = no imagePullSecrets (public images / local dev cache).
@@ -99,7 +99,10 @@ export function realOrchestrator(): Orchestrator {
           name: "squid",
           image: EGRESS_PROXY_IMAGE,
           // -N foreground, -d1 log to stderr; without -N the image daemonizes and the pod exits.
-          command: ["squid", "-N", "-d1", "-f", "/etc/squid/squid.conf"],
+          // The binary is resolved at start: the Ubuntu 26.04 image (Squid 7) ships
+          // it as `squid-gnutls` with no `squid` on PATH and a pebble entrypoint,
+          // while the 6.x images ship `squid` — an image override may be either.
+          command: ["sh", "-c", "exec \"$(command -v squid || command -v squid-gnutls)\" -N -d1 -f /etc/squid/squid.conf"],
           ports: [{ containerPort: 3128 }],
           volumeMounts: [
             { name: "conf", mountPath: "/etc/squid/squid.conf", subPath: "squid.conf" },
